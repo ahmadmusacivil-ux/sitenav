@@ -13,6 +13,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CreatorRouteImport } from './routes/creator'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as RouteTokenRouteImport } from './routes/route.$token'
 
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
@@ -34,18 +35,25 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RouteTokenRoute = RouteTokenRouteImport.update({
+  id: '/route/$token',
+  path: '/route/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/creator': typeof CreatorRoute
   '/dashboard': typeof DashboardRoute
+  '/route/$token': typeof RouteTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/creator': typeof CreatorRoute
   '/dashboard': typeof DashboardRoute
+  '/route/$token': typeof RouteTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,14 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/creator': typeof CreatorRoute
   '/dashboard': typeof DashboardRoute
+  '/route/$token': typeof RouteTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/creator' | '/dashboard'
+  fullPaths: '/' | '/auth' | '/creator' | '/dashboard' | '/route/$token'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/creator' | '/dashboard'
-  id: '__root__' | '/' | '/auth' | '/creator' | '/dashboard'
+  to: '/' | '/auth' | '/creator' | '/dashboard' | '/route/$token'
+  id: '__root__' | '/' | '/auth' | '/creator' | '/dashboard' | '/route/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +76,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CreatorRoute: typeof CreatorRoute
   DashboardRoute: typeof DashboardRoute
+  RouteTokenRoute: typeof RouteTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +109,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/route/$token': {
+      id: '/route/$token'
+      path: '/route/$token'
+      fullPath: '/route/$token'
+      preLoaderRoute: typeof RouteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,7 +124,18 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CreatorRoute: CreatorRoute,
   DashboardRoute: DashboardRoute,
+  RouteTokenRoute: RouteTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
