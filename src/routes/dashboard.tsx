@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Share2, Trash2, MapPin, Check, Copy } from "lucide-react";
+import { Plus, Share2, Trash2, MapPin, Check, Eye, Pin as PinIcon } from "lucide-react";
 import { supabase, type SavedRoute } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import AppHeader from "@/components/AppHeader";
@@ -100,13 +100,27 @@ function Dashboard() {
                   </div>
                   <div className="min-w-0">
                     <h3 className="font-semibold truncate">{r.name}</h3>
-                    <p className="text-xs text-navy-400">
-                      {new Date(r.created_at).toLocaleDateString()} •{" "}
-                      {Array.isArray(r.waypoints) ? r.waypoints.length : 0} pts
+                    <p className="text-xs text-navy-400 flex items-center gap-2 flex-wrap">
+                      <span>{new Date(r.created_at).toLocaleDateString()}</span>
+                      <span className="inline-flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        {Array.isArray(r.waypoints) ? r.waypoints.length : 0} pts
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <PinIcon className="w-3 h-3" />
+                        {Array.isArray(r.pins) ? r.pins.length : 0} pins
+                      </span>
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-2">
+                  <Link
+                    to="/routes/$id"
+                    params={{ id: r.id }}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
+                  >
+                    <Eye className="w-3.5 h-3.5" /> View
+                  </Link>
                   <button
                     onClick={() => handleShare(r)}
                     className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium bg-navy-700 hover:bg-navy-600 text-white rounded-lg transition-colors"
@@ -121,18 +135,10 @@ function Dashboard() {
                       </>
                     )}
                   </button>
-                  <a
-                    href={`/route/${r.share_token}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium bg-navy-700 hover:bg-navy-600 text-white rounded-lg transition-colors"
-                    title="Open follower view"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                  </a>
                   <button
                     onClick={() => handleDelete(r.id)}
                     className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
+                    title="Delete route"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
