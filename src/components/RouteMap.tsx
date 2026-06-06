@@ -61,6 +61,7 @@ function FollowGps({ position }: { position: { lat: number; lng: number } }) {
 
 function RouteArrows({ points }: { points: [number, number][] }) {
   const map = useMap();
+  const key = points.map((p) => `${p[0].toFixed(6)},${p[1].toFixed(6)}`).join("|");
   useEffect(() => {
     if (points.length < 2) return;
     const decorator = (L as unknown as {
@@ -82,7 +83,8 @@ function RouteArrows({ points }: { points: [number, number][] }) {
     return () => {
       map.removeLayer(decorator);
     };
-  }, [map, points]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, key]);
   return null;
 }
 
