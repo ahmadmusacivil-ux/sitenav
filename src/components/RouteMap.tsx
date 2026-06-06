@@ -1,7 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Polyline, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Polyline, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet-polylinedecorator";
+import { type Pin, PIN_COLORS } from "@/lib/pins";
 
 interface Waypoint {
   id: number;
@@ -25,6 +26,15 @@ function createGpsIcon() {
     html: '<span class="gps-pulse"></span><span class="gps-dot"></span>',
     iconSize: [22, 22],
     iconAnchor: [11, 11],
+  });
+}
+
+function createPinIcon(color: string) {
+  return L.divIcon({
+    className: "pin-marker",
+    html: `<span class="pin-dot" style="background:${color}"></span>`,
+    iconSize: [22, 28],
+    iconAnchor: [11, 26],
   });
 }
 
@@ -91,6 +101,9 @@ function RouteArrows({ points }: { points: [number, number][] }) {
 type RouteMapProps = {
   waypoints: Waypoint[];
   onAddWaypoint?: (lat: number, lng: number) => void;
+  onAddPin?: (lat: number, lng: number) => void;
+  pins?: Pin[];
+  pinMode?: boolean;
   gpsPosition?: { lat: number; lng: number } | null;
   fitToWaypoints?: boolean;
   followGps?: boolean;
@@ -99,16 +112,23 @@ type RouteMapProps = {
 export default function RouteMap({
   waypoints,
   onAddWaypoint,
+  onAddPin,
+  pins = [],
+  pinMode = false,
   gpsPosition,
   fitToWaypoints = false,
   followGps = false,
 }: RouteMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const handleClick = useCallback(
-    (e: L.LeafletMouseEvent) => onAddWaypoint?.(e.latlng.lat, e.latlng.lng),
-    [onAddWaypoint],
+    (e: L.LeafletMouseEvent) => {
+      if (pinMode) onAddPin?.(e.latlng.lat, e.latlng.lng);
+      else onAddWaypoint?.(e.latlng.lat, e.latlng.lng);
+    },
+    [onAddPin, onAddWaypoint, pinMode],
   );
   const polyline = waypoints.map((w) => [w.lat, w.lng] as [number, number]);
+  const clickable = Boolean(onAddWaypoint || onAddPin);
 
   return (
     <MapContainer
@@ -117,14 +137,14 @@ export default function RouteMap({
       zoom={5}
       scrollWheelZoom
       zoomControl
-      className="absolute inset-0 w-full h-full"
+      className={`absolute inset-0 w-full h-full ${pinMode ? "cursor-pin" : ""}`}
     >
       <TileLayer
         url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
         attribution="Tiles &copy; Esri"
         maxZoom={19}
       />
-      {onAddWaypoint && <MapClickHandler onMapClick={handleClick} />}
+      {clickable && <MapClickHandler onMapClick={handleClick} />}
       {fitToWaypoints && polyline.length > 0 && <FitToBounds points={polyline} />}
       {followGps && gpsPosition && <FollowGps position={gpsPosition} />}
       {polyline.length > 1 && (
@@ -139,6 +159,18 @@ export default function RouteMap({
           i === 0 ? "first" : i === waypoints.length - 1 && waypoints.length > 1 ? "last" : "middle";
         return <Marker key={wp.id} position={[wp.lat, wp.lng]} icon={createMarkerIcon(type)} />;
       })}
+      {pins.map((p) => (
+        <Marker key={p.id} position={[p.lat, p.lng]} icon={createPinIcon(PIN_COLORS[p.label])}>
+          <Tooltip direction="top" offset={[0, -22]} opacity={1} permanent className="pin-tooltip">
+            {p.label}
+          </Tooltip>
+          {p.note && (
+            <Tooltip direction="bottom" offset={[0, 0]} className="pin-note-tooltip">
+              {p.note}
+            </Tooltip>
+          )}
+        </Marker>
+      ))}
       {gpsPosition && (
         <Marker position={[gpsPosition.lat, gpsPosition.lng]} icon={createGpsIcon()} />
       )}

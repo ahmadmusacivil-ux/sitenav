@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Navigation, MapPin } from "lucide-react";
 import { ClientOnlyMap } from "@/components/RouteMap";
 import { supabase, type SavedRoute } from "@/lib/supabase";
+import { distanceMeters, PIN_COLORS, type Pin } from "@/lib/pins";
 
 export const Route = createFileRoute("/route/$token")({
   head: () => ({ meta: [{ title: "Follow Route — SiteNav" }] }),
@@ -20,7 +21,7 @@ function FollowerPage() {
   useEffect(() => {
     supabase
       .from("routes")
-      .select("id,user_id,name,waypoints,share_token,created_at")
+      .select("id,user_id,name,waypoints,pins,share_token,created_at")
       .eq("share_token", token)
       .maybeSingle()
       .then(({ data }) => {
@@ -74,6 +75,14 @@ function FollowerPage() {
   }
 
   const waypoints = (route.waypoints || []).map((w, i) => ({ id: i + 1, lat: w.lat, lng: w.lng }));
+  const pins: Pin[] = (route.pins || []).filter((p): p is Pin => !!p && typeof p.lat === "number");
+
+  const nearbyPin = pos
+    ? pins
+        .map((p) => ({ pin: p, dist: distanceMeters(pos, { lat: p.lat, lng: p.lng }) }))
+        .filter((x) => x.dist <= 30 && x.pin.note)
+        .sort((a, b) => a.dist - b.dist)[0]?.pin
+    : null;
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
@@ -96,6 +105,7 @@ function FollowerPage() {
       <div className="flex-1 relative min-h-0">
         <ClientOnlyMap
           waypoints={waypoints}
+          pins={pins}
           gpsPosition={pos}
           fitToWaypoints={!pos}
           followGps
@@ -116,6 +126,22 @@ function FollowerPage() {
             </div>
           )}
         </div>
+        {nearbyPin && (
+          <div className="pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000] w-[min(92vw,420px)]">
+            <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-navy-950/95 border border-navy-700 shadow-2xl backdrop-blur-sm">
+              <span
+                className="mt-0.5 w-3 h-3 rounded-full border border-white/60 flex-shrink-0"
+                style={{ background: PIN_COLORS[nearbyPin.label] }}
+              />
+              <div className="min-w-0">
+                <div className="text-white text-sm font-semibold leading-tight">
+                  {nearbyPin.label}
+                </div>
+                <div className="text-navy-200 text-xs mt-0.5 leading-snug">{nearbyPin.note}</div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
