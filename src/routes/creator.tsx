@@ -13,6 +13,9 @@ export const Route = createFileRoute("/creator")({
       { name: "description", content: "Draw a custom route on the satellite map and share it as a link." },
     ],
   }),
+  validateSearch: (search: Record<string, unknown>): { edit?: string } => ({
+    edit: typeof search.edit === "string" ? search.edit : undefined,
+  }),
   component: CreatorPage,
 });
 
@@ -25,9 +28,13 @@ interface Waypoint {
 function CreatorPage() {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
+  const { edit: editId } = Route.useSearch();
   const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
   const [nextId, setNextId] = useState(1);
   const [pins, setPins] = useState<Pin[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingShareToken, setEditingShareToken] = useState<string | null>(null);
+  const [loadingRoute, setLoadingRoute] = useState<boolean>(Boolean(editId));
   const [mode, setMode] = useState<"waypoint" | "pin">("waypoint");
   const [pendingPin, setPendingPin] = useState<{ lat: number; lng: number } | null>(null);
   const [pinLabel, setPinLabel] = useState<PinLabel>("Entry");
@@ -42,6 +49,37 @@ function CreatorPage() {
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
   }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (!user || !editId) {
+      setLoadingRoute(false);
+      return;
+    }
+    setLoadingRoute(true);
+    supabase
+      .from("routes")
+      .select("id,user_id,name,waypoints,pins,share_token,created_at")
+      .eq("id", editId)
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        const r = data as
+          | { id: string; name: string; waypoints: { lat: number; lng: number }[]; pins: Pin[] | null; share_token: string }
+          | null;
+        if (r) {
+          const wps = (r.waypoints || []).map((w, i) => ({ id: i + 1, lat: w.lat, lng: w.lng }));
+          setWaypoints(wps);
+          setNextId(wps.length + 1);
+          setPins(
+            (r.pins || []).filter((p): p is Pin => !!p && typeof p.lat === "number"),
+          );
+          setRouteName(r.name);
+          setEditingId(r.id);
+          setEditingShareToken(r.share_token);
+        }
+        setLoadingRoute(false);
+      });
+  }, [editId, user]);
 
   const addWaypoint = (lat: number, lng: number) => {
     setWaypoints((p) => [...p, { id: nextId, lat, lng }]);
@@ -91,30 +129,48 @@ function CreatorPage() {
     if (!user || waypoints.length < 2 || !routeName.trim()) return;
     setSaveStatus("saving");
     setErrorMsg(null);
-    const { data, error } = await supabase
-      .from("routes")
-      .insert({
-        user_id: user.id,
-        name: routeName.trim(),
-        waypoints: waypoints.map((w) => ({ lat: w.lat, lng: w.lng })),
-        pins: pins.map((p) => ({
-          id: p.id,
-          lat: p.lat,
-          lng: p.lng,
-          label: p.label,
-          note: p.note ?? null,
-        })),
-      })
-      .select("share_token")
-      .single();
-    if (error || !data) {
-      setSaveStatus("error");
-      setErrorMsg(error?.message ?? "Failed to save");
-      return;
+    const payload = {
+      name: routeName.trim(),
+      waypoints: waypoints.map((w) => ({ lat: w.lat, lng: w.lng })),
+      pins: pins.map((p) => ({
+        id: p.id,
+        lat: p.lat,
+        lng: p.lng,
+        label: p.label,
+        note: p.note ?? null,
+      })),
+    };
+    if (editingId) {
+      const { error } = await supabase
+        .from("routes")
+        .update(payload)
+        .eq("id", editingId)
+        .eq("user_id", user.id);
+      if (error) {
+        setSaveStatus("error");
+        setErrorMsg(error.message);
+        return;
+      }
+      setSaveStatus("saved");
+      if (editingShareToken) {
+        setShareUrl(`${window.location.origin}/route/${editingShareToken}`);
+      }
+      setNamePromptOpen(false);
+    } else {
+      const { data, error } = await supabase
+        .from("routes")
+        .insert({ user_id: user.id, ...payload })
+        .select("share_token")
+        .single();
+      if (error || !data) {
+        setSaveStatus("error");
+        setErrorMsg(error?.message ?? "Failed to save");
+        return;
+      }
+      setSaveStatus("saved");
+      setShareUrl(`${window.location.origin}/route/${data.share_token}`);
+      setNamePromptOpen(false);
     }
-    setSaveStatus("saved");
-    setShareUrl(`${window.location.origin}/route/${data.share_token}`);
-    setNamePromptOpen(false);
   };
 
   const copyShare = async () => {
@@ -130,7 +186,7 @@ function CreatorPage() {
 
   const canSave = waypoints.length >= 2;
 
-  if (loading || !user) return <div className="h-screen bg-navy-900" />;
+  if (loading || !user || loadingRoute) return <div className="h-screen bg-navy-900" />;
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
