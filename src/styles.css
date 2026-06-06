@@ -1,6 +1,7 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+@import "leaflet/dist/leaflet.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -141,4 +142,67 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
+}
+
+@theme {
+  --color-navy-50: #f0f3f8;
+  --color-navy-100: #d9e0ed;
+  --color-navy-200: #b3c1db;
+  --color-navy-300: #8da2c9;
+  --color-navy-400: #6783b7;
+  --color-navy-500: #4164a5;
+  --color-navy-600: #345084;
+  --color-navy-700: #273c63;
+  --color-navy-800: #1a2842;
+  --color-navy-900: #0d1421;
+  --color-navy-950: #060a11;
+  --breakpoint-xs: 30rem;
+}
+
+.leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
+  font-family: inherit;
+  background: #0d1421;
+}
+.leaflet-control-zoom {
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+}
+.leaflet-control-zoom a {
+  background-color: #1a2842 !important;
+  color: #fff !important;
+  border: none !important;
+  width: 36px !important;
+  height: 36px !important;
+  line-height: 36px !important;
+  font-size: 18px !important;
+}
+.leaflet-control-zoom a:hover { background-color: #273c63 !important; }
+.leaflet-control-zoom-in { border-radius: 8px 8px 0 0 !important; }
+.leaflet-control-zoom-out { border-radius: 0 0 8px 8px !important; }
+
+.route-marker {
+  background: #f97316;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  width: 16px !important;
+  height: 16px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+.route-marker-first {
+  background: #22c55e;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  width: 20px !important;
+  height: 20px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.route-marker-last {
+  background: #ef4444;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  width: 20px !important;
+  height: 20px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
