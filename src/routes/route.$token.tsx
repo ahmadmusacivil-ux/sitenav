@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigation, MapPin } from "lucide-react";
 import { ClientOnlyMap } from "@/components/RouteMap";
 import { supabase, type SavedRoute } from "@/lib/supabase";
