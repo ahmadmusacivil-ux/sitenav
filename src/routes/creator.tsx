@@ -200,7 +200,9 @@ function CreatorPage() {
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <div className="min-w-0">
-              <h1 className="text-white font-semibold leading-tight truncate">Create Route</h1>
+              <h1 className="text-white font-semibold leading-tight truncate">
+                {editingId ? "Edit Route" : "Create Route"}
+              </h1>
               <p className="text-navy-400 text-xs leading-tight">
                 {mode === "pin"
                   ? "Click map to place a pin"
