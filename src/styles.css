@@ -206,3 +206,23 @@
   height: 20px !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
+
+.gps-marker { position: relative; }
+.gps-marker .gps-dot {
+  position: absolute; inset: 0; margin: auto;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #3b82f6; border: 3px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.2), 0 2px 6px rgba(0,0,0,0.35);
+  display: block;
+}
+.gps-marker .gps-pulse {
+  position: absolute; inset: 0; margin: auto;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(59,130,246,0.35);
+  animation: gps-pulse 1.8s ease-out infinite;
+  display: block;
+}
+@keyframes gps-pulse {
+  0% { transform: scale(0.6); opacity: 0.8; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
