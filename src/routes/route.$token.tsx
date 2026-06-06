@@ -15,6 +15,7 @@ function FollowerPage() {
   const [loading, setLoading] = useState(true);
   const [pos, setPos] = useState<{ lat: number; lng: number } | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
+  const [geoDenied, setGeoDenied] = useState(false);
 
   useEffect(() => {
     supabase
@@ -37,8 +38,12 @@ function FollowerPage() {
       (p) => {
         setPos({ lat: p.coords.latitude, lng: p.coords.longitude });
         setGeoError(null);
+        setGeoDenied(false);
       },
-      (err) => setGeoError(err.message),
+      (err) => {
+        setGeoError(err.message);
+        if (err.code === 1) setGeoDenied(true);
+      },
       { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 },
     );
     return () => navigator.geolocation.clearWatch(id);
@@ -89,7 +94,28 @@ function FollowerPage() {
       </div>
 
       <div className="flex-1 relative min-h-0">
-        <ClientOnlyMap waypoints={waypoints} gpsPosition={pos} fitToWaypoints />
+        <ClientOnlyMap
+          waypoints={waypoints}
+          gpsPosition={pos}
+          fitToWaypoints={!pos}
+          followGps
+        />
+        <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-[1000]">
+          {geoDenied ? (
+            <div className="px-3 py-1.5 rounded-full bg-red-500/90 text-white text-xs font-medium shadow-lg backdrop-blur-sm">
+              Location access denied — please enable GPS on your device
+            </div>
+          ) : pos ? (
+            <div className="px-3 py-1.5 rounded-full bg-navy-950/85 text-white text-xs font-medium shadow-lg backdrop-blur-sm flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+              GPS active — follow the orange route
+            </div>
+          ) : (
+            <div className="px-3 py-1.5 rounded-full bg-navy-950/85 text-white text-xs font-medium shadow-lg backdrop-blur-sm">
+              {geoError ? `Location error: ${geoError}` : "Getting your location…"}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

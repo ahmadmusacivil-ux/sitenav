@@ -44,11 +44,26 @@ function FitToBounds({ points }: { points: [number, number][] }) {
   return null;
 }
 
+function FollowGps({ position }: { position: { lat: number; lng: number } }) {
+  const map = useMap();
+  const firstRef = useRef(true);
+  useEffect(() => {
+    if (firstRef.current) {
+      map.setView([position.lat, position.lng], 17, { animate: true });
+      firstRef.current = false;
+    } else {
+      map.panTo([position.lat, position.lng], { animate: true });
+    }
+  }, [map, position.lat, position.lng]);
+  return null;
+}
+
 type RouteMapProps = {
   waypoints: Waypoint[];
   onAddWaypoint?: (lat: number, lng: number) => void;
   gpsPosition?: { lat: number; lng: number } | null;
   fitToWaypoints?: boolean;
+  followGps?: boolean;
 };
 
 export default function RouteMap({
@@ -56,6 +71,7 @@ export default function RouteMap({
   onAddWaypoint,
   gpsPosition,
   fitToWaypoints = false,
+  followGps = false,
 }: RouteMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const handleClick = useCallback(
@@ -80,6 +96,7 @@ export default function RouteMap({
       />
       {onAddWaypoint && <MapClickHandler onMapClick={handleClick} />}
       {fitToWaypoints && polyline.length > 0 && <FitToBounds points={polyline} />}
+      {followGps && gpsPosition && <FollowGps position={gpsPosition} />}
       {polyline.length > 1 && (
         <Polyline
           positions={polyline}
