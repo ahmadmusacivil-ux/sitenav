@@ -9,12 +9,25 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CreatorRouteImport } from './routes/creator'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as RouteTokenRouteImport } from './routes/route.$token'
 
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CreatorRoute = CreatorRouteImport.update({
   id: '/creator',
   path: '/creator',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -22,40 +35,71 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RouteTokenRoute = RouteTokenRouteImport.update({
+  id: '/route/$token',
+  path: '/route/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/creator': typeof CreatorRoute
+  '/dashboard': typeof DashboardRoute
+  '/route/$token': typeof RouteTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/creator': typeof CreatorRoute
+  '/dashboard': typeof DashboardRoute
+  '/route/$token': typeof RouteTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/creator': typeof CreatorRoute
+  '/dashboard': typeof DashboardRoute
+  '/route/$token': typeof RouteTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/creator'
+  fullPaths: '/' | '/auth' | '/creator' | '/dashboard' | '/route/$token'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/creator'
-  id: '__root__' | '/' | '/creator'
+  to: '/' | '/auth' | '/creator' | '/dashboard' | '/route/$token'
+  id: '__root__' | '/' | '/auth' | '/creator' | '/dashboard' | '/route/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRoute
   CreatorRoute: typeof CreatorRoute
+  DashboardRoute: typeof DashboardRoute
+  RouteTokenRoute: typeof RouteTokenRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/creator': {
       id: '/creator'
       path: '/creator'
       fullPath: '/creator'
       preLoaderRoute: typeof CreatorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -65,12 +109,22 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/route/$token': {
+      id: '/route/$token'
+      path: '/route/$token'
+      fullPath: '/route/$token'
+      preLoaderRoute: typeof RouteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRoute,
   CreatorRoute: CreatorRoute,
+  DashboardRoute: DashboardRoute,
+  RouteTokenRoute: RouteTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
