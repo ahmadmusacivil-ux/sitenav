@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Trash2, Save, Check, LogOut, Copy } from "lucide-react";
+import { ArrowLeft, Trash2, Save, Check, LogOut, Copy, MapPin, Route as RouteIcon } from "lucide-react";
 import { ClientOnlyMap } from "@/components/RouteMap";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+import { PIN_LABELS, PIN_COLORS, type Pin, type PinLabel } from "@/lib/pins";
 
 export const Route = createFileRoute("/creator")({
   head: () => ({
@@ -26,6 +27,11 @@ function CreatorPage() {
   const navigate = useNavigate();
   const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
   const [nextId, setNextId] = useState(1);
+  const [pins, setPins] = useState<Pin[]>([]);
+  const [mode, setMode] = useState<"waypoint" | "pin">("waypoint");
+  const [pendingPin, setPendingPin] = useState<{ lat: number; lng: number } | null>(null);
+  const [pinLabel, setPinLabel] = useState<PinLabel>("Entry");
+  const [pinNote, setPinNote] = useState("");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [namePromptOpen, setNamePromptOpen] = useState(false);
@@ -42,9 +48,34 @@ function CreatorPage() {
     setNextId((n) => n + 1);
   };
 
+  const startPinPlacement = (lat: number, lng: number) => {
+    setPendingPin({ lat, lng });
+    setPinLabel("Entry");
+    setPinNote("");
+  };
+
+  const confirmPin = () => {
+    if (!pendingPin) return;
+    setPins((p) => [
+      ...p,
+      {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        lat: pendingPin.lat,
+        lng: pendingPin.lng,
+        label: pinLabel,
+        note: pinNote.trim() || undefined,
+      },
+    ]);
+    setPendingPin(null);
+    setMode("waypoint");
+  };
+
+  const cancelPin = () => setPendingPin(null);
+
   const handleClear = () => {
     setWaypoints([]);
     setNextId(1);
+    setPins([]);
     setSaveStatus("idle");
     setShareUrl(null);
   };
@@ -66,6 +97,13 @@ function CreatorPage() {
         user_id: user.id,
         name: routeName.trim(),
         waypoints: waypoints.map((w) => ({ lat: w.lat, lng: w.lng })),
+        pins: pins.map((p) => ({
+          id: p.id,
+          lat: p.lat,
+          lng: p.lng,
+          label: p.label,
+          note: p.note ?? null,
+        })),
       })
       .select("share_token")
       .single();
@@ -108,24 +146,50 @@ function CreatorPage() {
             <div className="min-w-0">
               <h1 className="text-white font-semibold leading-tight truncate">Create Route</h1>
               <p className="text-navy-400 text-xs leading-tight">
-                {waypoints.length === 0
-                  ? "Click map to add points"
-                  : `${waypoints.length} waypoint${waypoints.length !== 1 ? "s" : ""}`}
+                {mode === "pin"
+                  ? "Click map to place a pin"
+                  : waypoints.length === 0
+                    ? "Click map to add points"
+                    : `${waypoints.length} waypoint${waypoints.length !== 1 ? "s" : ""}${pins.length ? ` • ${pins.length} pin${pins.length !== 1 ? "s" : ""}` : ""}`}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
-            {waypoints.length > 0 && (
-              <div className="hidden sm:flex items-center gap-2 bg-navy-800/80 rounded-lg px-3 py-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
-                <span className="text-white text-sm font-medium">{waypoints.length}</span>
-                <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
-              </div>
-            )}
+            <div className="hidden sm:flex items-center bg-navy-800/80 rounded-lg p-0.5">
+              <button
+                onClick={() => setMode("waypoint")}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                  mode === "waypoint" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
+                }`}
+                title="Draw route mode"
+              >
+                <RouteIcon className="w-3.5 h-3.5" /> Route
+              </button>
+              <button
+                onClick={() => setMode("pin")}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                  mode === "pin" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
+                }`}
+                title="Add pin mode"
+              >
+                <MapPin className="w-3.5 h-3.5" /> Pin
+              </button>
+            </div>
+            <button
+              onClick={() => setMode((m) => (m === "pin" ? "waypoint" : "pin"))}
+              className={`sm:hidden inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                mode === "pin"
+                  ? "bg-orange-500 text-white"
+                  : "bg-navy-800 hover:bg-navy-700 text-navy-300 hover:text-white"
+              }`}
+            >
+              <MapPin className="w-4 h-4" />
+              <span className="hidden xs:inline">{mode === "pin" ? "Placing…" : "Pin"}</span>
+            </button>
             <button
               onClick={handleClear}
-              disabled={waypoints.length === 0}
+              disabled={waypoints.length === 0 && pins.length === 0}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-navy-800 hover:bg-navy-700 text-navy-300 hover:text-white rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <Trash2 className="w-4 h-4" />
@@ -184,7 +248,20 @@ function CreatorPage() {
       </div>
 
       <div className="flex-1 relative min-h-0">
-        <ClientOnlyMap waypoints={waypoints} onAddWaypoint={addWaypoint} />
+        <ClientOnlyMap
+          waypoints={waypoints}
+          onAddWaypoint={addWaypoint}
+          onAddPin={startPinPlacement}
+          pins={pins}
+          pinMode={mode === "pin"}
+        />
+        {mode === "pin" && !pendingPin && (
+          <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-[1000]">
+            <div className="px-3 py-1.5 rounded-full bg-orange-500 text-white text-xs font-semibold shadow-lg">
+              Tap the map to place a pin
+            </div>
+          </div>
+        )}
         {waypoints.length > 0 && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000] sm:hidden">
             <div className="bg-navy-950/90 backdrop-blur-sm border border-navy-700 rounded-full px-4 py-1.5 flex items-center gap-2 shadow-lg">
@@ -195,6 +272,58 @@ function CreatorPage() {
           </div>
         )}
       </div>
+
+      {pendingPin && (
+        <div className="fixed inset-0 z-[2000] bg-black/60 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-navy-900 border border-navy-700 rounded-2xl p-6 shadow-2xl">
+            <h2 className="text-lg font-semibold text-white mb-1">New pin</h2>
+            <p className="text-navy-400 text-sm mb-4">Choose a label and optional note.</p>
+            <label className="block text-xs font-medium text-navy-300 mb-1">Label</label>
+            <div className="relative mb-3">
+              <select
+                value={pinLabel}
+                onChange={(e) => setPinLabel(e.target.value as PinLabel)}
+                className="w-full appearance-none px-3 py-2.5 rounded-lg bg-navy-950 border border-navy-700 text-white focus:outline-none focus:border-orange-500"
+              >
+                {PIN_LABELS.map((l) => (
+                  <option key={l} value={l}>
+                    {l}
+                  </option>
+                ))}
+              </select>
+              <span
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border border-white/40"
+                style={{ background: PIN_COLORS[pinLabel] }}
+              />
+            </div>
+            <label className="block text-xs font-medium text-navy-300 mb-1">Note (optional)</label>
+            <input
+              value={pinNote}
+              onChange={(e) => setPinNote(e.target.value)}
+              maxLength={200}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") confirmPin();
+              }}
+              className="w-full px-3 py-2.5 rounded-lg bg-navy-950 border border-navy-700 text-white placeholder-navy-500 focus:outline-none focus:border-orange-500"
+              placeholder="e.g. Use the left gate only"
+            />
+            <div className="mt-5 flex gap-2 justify-end">
+              <button
+                onClick={cancelPin}
+                className="px-4 py-2 text-sm font-medium bg-navy-800 hover:bg-navy-700 text-navy-200 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmPin}
+                className="px-4 py-2 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-lg"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {namePromptOpen && (
         <div className="fixed inset-0 z-[2000] bg-black/60 flex items-center justify-center p-4">
