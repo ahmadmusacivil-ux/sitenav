@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Polyline, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
+import "leaflet-polylinedecorator";
 
 interface Waypoint {
   id: number;
@@ -58,6 +59,33 @@ function FollowGps({ position }: { position: { lat: number; lng: number } }) {
   return null;
 }
 
+function RouteArrows({ points }: { points: [number, number][] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (points.length < 2) return;
+    const decorator = (L as unknown as {
+      polylineDecorator: (line: L.Polyline, opts: unknown) => L.Layer;
+    }).polylineDecorator(L.polyline(points), {
+      patterns: [
+        {
+          offset: 30,
+          repeat: 80,
+          symbol: (L as unknown as { Symbol: { arrowHead: (o: unknown) => unknown } }).Symbol.arrowHead({
+            pixelSize: 12,
+            polygon: false,
+            pathOptions: { stroke: true, color: "#f97316", weight: 3, opacity: 0.95 },
+          }),
+        },
+      ],
+    });
+    decorator.addTo(map);
+    return () => {
+      map.removeLayer(decorator);
+    };
+  }, [map, points]);
+  return null;
+}
+
 type RouteMapProps = {
   waypoints: Waypoint[];
   onAddWaypoint?: (lat: number, lng: number) => void;
@@ -103,6 +131,7 @@ export default function RouteMap({
           pathOptions={{ color: "#f97316", weight: 3, opacity: 0.9, lineCap: "round", lineJoin: "round" }}
         />
       )}
+      {polyline.length > 1 && <RouteArrows points={polyline} />}
       {waypoints.map((wp, i) => {
         const type =
           i === 0 ? "first" : i === waypoints.length - 1 && waypoints.length > 1 ? "last" : "middle";
