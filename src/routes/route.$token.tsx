@@ -138,7 +138,7 @@ function FollowerPage() {
             Going Out
           </button>
         </div>
-        <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-[1000]">
+        <div className="pointer-events-none absolute top-14 left-1/2 -translate-x-1/2 z-[1000]">
           {geoDenied ? (
             <div className="px-3 py-1.5 rounded-full bg-red-500/90 text-white text-xs font-medium shadow-lg backdrop-blur-sm">
               Location access denied — please enable GPS on your device
