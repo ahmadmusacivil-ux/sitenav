@@ -236,9 +236,11 @@ function CreatorPage() {
               <p className="text-navy-400 text-xs leading-tight">
                 {mode === "pin"
                   ? "Click map to place a pin"
-                  : waypoints.length === 0
-                    ? "Click map to add points"
-                    : `${waypoints.length} waypoint${waypoints.length !== 1 ? "s" : ""}${pins.length ? ` • ${pins.length} pin${pins.length !== 1 ? "s" : ""}` : ""}`}
+                  : routeType === "two_route"
+                    ? `${drawingLeg === "entry" ? "Entry" : "Exit"} leg • ${waypoints.length} in / ${exitWaypoints.length} out${pins.length ? ` • ${pins.length} pin${pins.length !== 1 ? "s" : ""}` : ""}`
+                    : waypoints.length === 0
+                      ? "Click map to add points"
+                      : `${waypoints.length} waypoint${waypoints.length !== 1 ? "s" : ""}${pins.length ? ` • ${pins.length} pin${pins.length !== 1 ? "s" : ""}` : ""}`}
               </p>
             </div>
           </div>
@@ -317,6 +319,48 @@ function CreatorPage() {
             </button>
           </div>
         </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
+            <button
+              onClick={() => setRouteType("two_way")}
+              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                routeType === "two_way" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
+              }`}
+            >
+              Two-Way Route
+            </button>
+            <button
+              onClick={() => setRouteType("two_route")}
+              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                routeType === "two_route" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
+              }`}
+            >
+              Two-Route
+            </button>
+          </div>
+          {routeType === "two_route" && (
+            <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
+              <button
+                onClick={() => setDrawingLeg("entry")}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
+                  drawingLeg === "entry" ? "bg-orange-500 text-white" : "text-navy-300 hover:text-white"
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-orange-500 border border-white/60" />
+                Entry
+              </button>
+              <button
+                onClick={() => setDrawingLeg("exit")}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
+                  drawingLeg === "exit" ? "bg-blue-500 text-white" : "text-navy-300 hover:text-white"
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-blue-500 border border-white/60" />
+                Exit
+              </button>
+            </div>
+          )}
+        </div>
         {shareUrl && (
           <div className="mt-2 flex items-center gap-2 bg-navy-900 border border-navy-700 rounded-lg px-3 py-2">
             <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
@@ -338,6 +382,9 @@ function CreatorPage() {
       <div className="flex-1 relative min-h-0">
         <ClientOnlyMap
           waypoints={waypoints}
+          exitWaypoints={exitWaypoints}
+          routeType={routeType}
+          activeDirection={drawingLeg === "exit" ? "out" : "in"}
           onAddWaypoint={addWaypoint}
           onAddPin={startPinPlacement}
           pins={pins}
