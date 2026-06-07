@@ -17,11 +17,12 @@ function FollowerPage() {
   const [pos, setPos] = useState<{ lat: number; lng: number } | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [geoDenied, setGeoDenied] = useState(false);
+  const [direction, setDirection] = useState<"in" | "out">("in");
 
   useEffect(() => {
     supabase
       .from("routes")
-      .select("id,user_id,name,waypoints,pins,share_token,created_at")
+      .select("id,user_id,name,waypoints,exit_waypoints,route_type,pins,share_token,created_at")
       .eq("share_token", token)
       .maybeSingle()
       .then(({ data }) => {
@@ -75,6 +76,12 @@ function FollowerPage() {
   }
 
   const waypoints = (route.waypoints || []).map((w, i) => ({ id: i + 1, lat: w.lat, lng: w.lng }));
+  const exitWaypoints = (route.exit_waypoints || []).map((w, i) => ({
+    id: waypoints.length + i + 1,
+    lat: w.lat,
+    lng: w.lng,
+  }));
+  const routeType = route.route_type === "two_route" ? "two_route" : "two_way";
   const pins: Pin[] = (route.pins || []).filter((p): p is Pin => !!p && typeof p.lat === "number");
 
   const nearbyPin = pos
@@ -105,12 +112,33 @@ function FollowerPage() {
       <div className="flex-1 relative min-h-0">
         <ClientOnlyMap
           waypoints={waypoints}
+          exitWaypoints={exitWaypoints}
+          routeType={routeType}
+          activeDirection={direction}
           pins={pins}
           gpsPosition={pos}
           fitToWaypoints={!pos}
           followGps
         />
-        <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-[1000]">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] flex items-center bg-navy-950/90 backdrop-blur-sm border border-navy-700 rounded-full p-0.5 shadow-lg">
+          <button
+            onClick={() => setDirection("in")}
+            className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${
+              direction === "in" ? "bg-orange-500 text-white" : "text-navy-300 hover:text-white"
+            }`}
+          >
+            Going In
+          </button>
+          <button
+            onClick={() => setDirection("out")}
+            className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${
+              direction === "out" ? "bg-blue-500 text-white" : "text-navy-300 hover:text-white"
+            }`}
+          >
+            Going Out
+          </button>
+        </div>
+        <div className="pointer-events-none absolute top-14 left-1/2 -translate-x-1/2 z-[1000]">
           {geoDenied ? (
             <div className="px-3 py-1.5 rounded-full bg-red-500/90 text-white text-xs font-medium shadow-lg backdrop-blur-sm">
               Location access denied — please enable GPS on your device

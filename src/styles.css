@@ -206,6 +206,15 @@
   height: 20px !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
+.route-marker-exit.route-marker-first {
+  background: #3b82f6;
+}
+.route-marker-exit.route-marker-last {
+  background: #1d4ed8;
+}
+.route-marker-exit.route-marker {
+  background: #3b82f6;
+}
 
 .gps-marker { position: relative; }
 .gps-marker .gps-dot {

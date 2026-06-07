@@ -14,11 +14,15 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
 import type { Pin } from "./pins";
 
+export type RouteType = "two_way" | "two_route";
+
 export type SavedRoute = {
   id: string;
   user_id: string;
   name: string;
   waypoints: { lat: number; lng: number }[];
+  exit_waypoints?: { lat: number; lng: number }[] | null;
+  route_type?: RouteType | null;
   pins?: Pin[] | null;
   share_token: string;
   created_at: string;

@@ -26,7 +26,7 @@ function OwnerRouteView() {
     if (!user) return;
     supabase
       .from("routes")
-      .select("id,user_id,name,waypoints,pins,share_token,created_at")
+      .select("id,user_id,name,waypoints,exit_waypoints,route_type,pins,share_token,created_at")
       .eq("id", id)
       .eq("user_id", user.id)
       .maybeSingle()
@@ -67,6 +67,12 @@ function OwnerRouteView() {
   }
 
   const waypoints = (route.waypoints || []).map((w, i) => ({ id: i + 1, lat: w.lat, lng: w.lng }));
+  const exitWaypoints = (route.exit_waypoints || []).map((w, i) => ({
+    id: waypoints.length + i + 1,
+    lat: w.lat,
+    lng: w.lng,
+  }));
+  const routeType = route.route_type === "two_route" ? "two_route" : "two_way";
   const pins: Pin[] = (route.pins || []).filter((p): p is Pin => !!p && typeof p.lat === "number");
 
   return (
@@ -104,6 +110,8 @@ function OwnerRouteView() {
       <div className="flex-1 relative min-h-0">
         <ClientOnlyMap
           waypoints={waypoints}
+          exitWaypoints={exitWaypoints}
+          routeType={routeType}
           pins={pins}
           gpsPosition={pos}
           fitToWaypoints={!pos}

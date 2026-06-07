@@ -10,9 +10,16 @@ interface Waypoint {
   lng: number;
 }
 
-function createMarkerIcon(type: "first" | "last" | "middle") {
-  const className =
+const ENTRY_COLOR = "#f97316";
+const EXIT_COLOR = "#3b82f6";
+
+function createMarkerIcon(
+  type: "first" | "last" | "middle",
+  variant: "entry" | "exit" = "entry",
+) {
+  const base =
     type === "first" ? "route-marker-first" : type === "last" ? "route-marker-last" : "route-marker";
+  const className = variant === "exit" ? `${base} route-marker-exit` : base;
   return L.divIcon({
     className,
     iconSize: type === "middle" ? [16, 16] : [20, 20],
@@ -69,14 +76,27 @@ function FollowGps({ position }: { position: { lat: number; lng: number } }) {
   return null;
 }
 
-function RouteArrows({ points }: { points: [number, number][] }) {
+function DirectionArrows({
+  points,
+  color,
+  opacity,
+  reverse,
+}: {
+  points: [number, number][];
+  color: string;
+  opacity: number;
+  reverse: boolean;
+}) {
   const map = useMap();
-  const key = points.map((p) => `${p[0].toFixed(6)},${p[1].toFixed(6)}`).join("|");
+  const key =
+    points.map((p) => `${p[0].toFixed(6)},${p[1].toFixed(6)}`).join("|") +
+    `|${color}|${opacity}|${reverse}`;
   useEffect(() => {
     if (points.length < 2) return;
+    const pts = reverse ? [...points].reverse() : points;
     const decorator = (L as unknown as {
       polylineDecorator: (line: L.Polyline, opts: unknown) => L.Layer;
-    }).polylineDecorator(L.polyline(points), {
+    }).polylineDecorator(L.polyline(pts), {
       patterns: [
         {
           offset: 30,
@@ -84,7 +104,7 @@ function RouteArrows({ points }: { points: [number, number][] }) {
           symbol: (L as unknown as { Symbol: { arrowHead: (o: unknown) => unknown } }).Symbol.arrowHead({
             pixelSize: 12,
             polygon: false,
-            pathOptions: { stroke: true, color: "#f97316", weight: 3, opacity: 0.95 },
+            pathOptions: { stroke: true, color, weight: 3, opacity },
           }),
         },
       ],
@@ -100,6 +120,9 @@ function RouteArrows({ points }: { points: [number, number][] }) {
 
 type RouteMapProps = {
   waypoints: Waypoint[];
+  exitWaypoints?: Waypoint[];
+  routeType?: "two_way" | "two_route";
+  activeDirection?: "in" | "out";
   onAddWaypoint?: (lat: number, lng: number) => void;
   onAddPin?: (lat: number, lng: number) => void;
   pins?: Pin[];
@@ -111,6 +134,9 @@ type RouteMapProps = {
 
 export default function RouteMap({
   waypoints,
+  exitWaypoints = [],
+  routeType = "two_way",
+  activeDirection = "in",
   onAddWaypoint,
   onAddPin,
   pins = [],
@@ -127,8 +153,12 @@ export default function RouteMap({
     },
     [onAddPin, onAddWaypoint, pinMode],
   );
-  const polyline = waypoints.map((w) => [w.lat, w.lng] as [number, number]);
+  const entryLine = waypoints.map((w) => [w.lat, w.lng] as [number, number]);
+  const exitLine = exitWaypoints.map((w) => [w.lat, w.lng] as [number, number]);
+  const allPoints = [...entryLine, ...exitLine];
   const clickable = Boolean(onAddWaypoint || onAddPin);
+  const dim = 0.3;
+  const bright = 0.95;
 
   return (
     <MapContainer
@@ -145,20 +175,61 @@ export default function RouteMap({
         maxZoom={19}
       />
       {clickable && <MapClickHandler onMapClick={handleClick} />}
-      {fitToWaypoints && polyline.length > 0 && <FitToBounds points={polyline} />}
+      {fitToWaypoints && allPoints.length > 0 && <FitToBounds points={allPoints} />}
       {followGps && gpsPosition && <FollowGps position={gpsPosition} />}
-      {polyline.length > 1 && (
+      {entryLine.length > 1 && (
         <Polyline
-          positions={polyline}
-          pathOptions={{ color: "#f97316", weight: 3, opacity: 0.9, lineCap: "round", lineJoin: "round" }}
+          positions={entryLine}
+          pathOptions={{ color: ENTRY_COLOR, weight: 3, opacity: 0.9, lineCap: "round", lineJoin: "round" }}
         />
       )}
-      {polyline.length > 1 && <RouteArrows points={polyline} />}
+      {entryLine.length > 1 && (
+        <DirectionArrows
+          points={entryLine}
+          color={ENTRY_COLOR}
+          opacity={activeDirection === "in" ? bright : dim}
+          reverse={false}
+        />
+      )}
+      {routeType === "two_way" && entryLine.length > 1 && (
+        <DirectionArrows
+          points={entryLine}
+          color={EXIT_COLOR}
+          opacity={activeDirection === "out" ? bright : dim}
+          reverse={true}
+        />
+      )}
+      {routeType === "two_route" && exitLine.length > 1 && (
+        <>
+          <Polyline
+            positions={exitLine}
+            pathOptions={{ color: EXIT_COLOR, weight: 3, opacity: 0.9, lineCap: "round", lineJoin: "round", dashArray: "6 6" }}
+          />
+          <DirectionArrows
+            points={exitLine}
+            color={EXIT_COLOR}
+            opacity={activeDirection === "out" ? bright : dim}
+            reverse={false}
+          />
+        </>
+      )}
       {waypoints.map((wp, i) => {
         const type =
           i === 0 ? "first" : i === waypoints.length - 1 && waypoints.length > 1 ? "last" : "middle";
         return <Marker key={wp.id} position={[wp.lat, wp.lng]} icon={createMarkerIcon(type)} />;
       })}
+      {routeType === "two_route" &&
+        exitWaypoints.map((wp, i) => {
+          const type =
+            i === 0 ? "first" : i === exitWaypoints.length - 1 && exitWaypoints.length > 1 ? "last" : "middle";
+          return (
+            <Marker
+              key={`exit-${wp.id}`}
+              position={[wp.lat, wp.lng]}
+              icon={createMarkerIcon(type, "exit")}
+            />
+          );
+        })}
       {pins.map((p) => (
         <Marker key={p.id} position={[p.lat, p.lng]} icon={createPinIcon(PIN_COLORS[p.label])}>
           <Tooltip direction="top" offset={[0, -22]} opacity={1} permanent className="pin-tooltip">

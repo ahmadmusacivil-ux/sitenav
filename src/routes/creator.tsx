@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, Trash2, Save, Check, LogOut, Copy, MapPin, Route as RouteIcon } from "lucide-react";
 import { ClientOnlyMap } from "@/components/RouteMap";
 import { useAuth } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
+import { supabase, type RouteType } from "@/lib/supabase";
 import { PIN_LABELS, PIN_COLORS, type Pin, type PinLabel } from "@/lib/pins";
 
 export const Route = createFileRoute("/creator")({
@@ -30,8 +30,11 @@ function CreatorPage() {
   const navigate = useNavigate();
   const { edit: editId } = Route.useSearch();
   const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
+  const [exitWaypoints, setExitWaypoints] = useState<Waypoint[]>([]);
   const [nextId, setNextId] = useState(1);
   const [pins, setPins] = useState<Pin[]>([]);
+  const [routeType, setRouteType] = useState<RouteType>("two_way");
+  const [drawingLeg, setDrawingLeg] = useState<"entry" | "exit">("entry");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingShareToken, setEditingShareToken] = useState<string | null>(null);
   const [loadingRoute, setLoadingRoute] = useState<boolean>(Boolean(editId));
@@ -58,18 +61,33 @@ function CreatorPage() {
     setLoadingRoute(true);
     supabase
       .from("routes")
-      .select("id,user_id,name,waypoints,pins,share_token,created_at")
+      .select("id,user_id,name,waypoints,exit_waypoints,route_type,pins,share_token,created_at")
       .eq("id", editId)
       .eq("user_id", user.id)
       .maybeSingle()
       .then(({ data }) => {
         const r = data as
-          | { id: string; name: string; waypoints: { lat: number; lng: number }[]; pins: Pin[] | null; share_token: string }
+          | {
+              id: string;
+              name: string;
+              waypoints: { lat: number; lng: number }[];
+              exit_waypoints: { lat: number; lng: number }[] | null;
+              route_type: RouteType | null;
+              pins: Pin[] | null;
+              share_token: string;
+            }
           | null;
         if (r) {
           const wps = (r.waypoints || []).map((w, i) => ({ id: i + 1, lat: w.lat, lng: w.lng }));
+          const exits = (r.exit_waypoints || []).map((w, i) => ({
+            id: wps.length + i + 1,
+            lat: w.lat,
+            lng: w.lng,
+          }));
           setWaypoints(wps);
-          setNextId(wps.length + 1);
+          setExitWaypoints(exits);
+          setNextId(wps.length + exits.length + 1);
+          setRouteType(r.route_type === "two_route" ? "two_route" : "two_way");
           setPins(
             (r.pins || []).filter((p): p is Pin => !!p && typeof p.lat === "number"),
           );
@@ -82,7 +100,11 @@ function CreatorPage() {
   }, [editId, user]);
 
   const addWaypoint = (lat: number, lng: number) => {
-    setWaypoints((p) => [...p, { id: nextId, lat, lng }]);
+    if (routeType === "two_route" && drawingLeg === "exit") {
+      setExitWaypoints((p) => [...p, { id: nextId, lat, lng }]);
+    } else {
+      setWaypoints((p) => [...p, { id: nextId, lat, lng }]);
+    }
     setNextId((n) => n + 1);
   };
 
@@ -112,6 +134,7 @@ function CreatorPage() {
 
   const handleClear = () => {
     setWaypoints([]);
+    setExitWaypoints([]);
     setNextId(1);
     setPins([]);
     setSaveStatus("idle");
@@ -119,19 +142,24 @@ function CreatorPage() {
   };
 
   const openSavePrompt = () => {
-    if (waypoints.length < 2) return;
+    if (!canSave) return;
     setRouteName(`Route ${new Date().toLocaleString()}`);
     setErrorMsg(null);
     setNamePromptOpen(true);
   };
 
   const handleSave = async () => {
-    if (!user || waypoints.length < 2 || !routeName.trim()) return;
+    if (!user || !canSave || !routeName.trim()) return;
     setSaveStatus("saving");
     setErrorMsg(null);
     const payload = {
       name: routeName.trim(),
       waypoints: waypoints.map((w) => ({ lat: w.lat, lng: w.lng })),
+      exit_waypoints:
+        routeType === "two_route"
+          ? exitWaypoints.map((w) => ({ lat: w.lat, lng: w.lng }))
+          : [],
+      route_type: routeType,
       pins: pins.map((p) => ({
         id: p.id,
         lat: p.lat,
@@ -184,7 +212,9 @@ function CreatorPage() {
     }
   };
 
-  const canSave = waypoints.length >= 2;
+  const canSave =
+    waypoints.length >= 2 &&
+    (routeType === "two_way" || exitWaypoints.length >= 2);
 
   if (loading || !user || loadingRoute) return <div className="h-screen bg-navy-900" />;
 
@@ -206,9 +236,11 @@ function CreatorPage() {
               <p className="text-navy-400 text-xs leading-tight">
                 {mode === "pin"
                   ? "Click map to place a pin"
-                  : waypoints.length === 0
-                    ? "Click map to add points"
-                    : `${waypoints.length} waypoint${waypoints.length !== 1 ? "s" : ""}${pins.length ? ` • ${pins.length} pin${pins.length !== 1 ? "s" : ""}` : ""}`}
+                  : routeType === "two_route"
+                    ? `${drawingLeg === "entry" ? "Entry" : "Exit"} leg • ${waypoints.length} in / ${exitWaypoints.length} out${pins.length ? ` • ${pins.length} pin${pins.length !== 1 ? "s" : ""}` : ""}`
+                    : waypoints.length === 0
+                      ? "Click map to add points"
+                      : `${waypoints.length} waypoint${waypoints.length !== 1 ? "s" : ""}${pins.length ? ` • ${pins.length} pin${pins.length !== 1 ? "s" : ""}` : ""}`}
               </p>
             </div>
           </div>
@@ -287,6 +319,48 @@ function CreatorPage() {
             </button>
           </div>
         </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
+            <button
+              onClick={() => setRouteType("two_way")}
+              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                routeType === "two_way" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
+              }`}
+            >
+              Two-Way Route
+            </button>
+            <button
+              onClick={() => setRouteType("two_route")}
+              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                routeType === "two_route" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
+              }`}
+            >
+              Two-Route
+            </button>
+          </div>
+          {routeType === "two_route" && (
+            <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
+              <button
+                onClick={() => setDrawingLeg("entry")}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
+                  drawingLeg === "entry" ? "bg-orange-500 text-white" : "text-navy-300 hover:text-white"
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-orange-500 border border-white/60" />
+                Entry
+              </button>
+              <button
+                onClick={() => setDrawingLeg("exit")}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
+                  drawingLeg === "exit" ? "bg-blue-500 text-white" : "text-navy-300 hover:text-white"
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-blue-500 border border-white/60" />
+                Exit
+              </button>
+            </div>
+          )}
+        </div>
         {shareUrl && (
           <div className="mt-2 flex items-center gap-2 bg-navy-900 border border-navy-700 rounded-lg px-3 py-2">
             <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
@@ -308,6 +382,9 @@ function CreatorPage() {
       <div className="flex-1 relative min-h-0">
         <ClientOnlyMap
           waypoints={waypoints}
+          exitWaypoints={exitWaypoints}
+          routeType={routeType}
+          activeDirection={drawingLeg === "exit" ? "out" : "in"}
           onAddWaypoint={addWaypoint}
           onAddPin={startPinPlacement}
           pins={pins}
