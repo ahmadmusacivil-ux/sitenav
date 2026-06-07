@@ -118,6 +118,50 @@ function DirectionArrows({
   return null;
 }
 
+function catmullRom(p0: number, p1: number, p2: number, p3: number, t: number) {
+  const t2 = t * t;
+  const t3 = t2 * t;
+  return (
+    0.5 *
+    (2 * p1 +
+      (-p0 + p2) * t +
+      (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
+      (-p0 + 3 * p1 - 3 * p2 + p3) * t3)
+  );
+}
+
+function smoothPath(pts: [number, number][], segments = 16): [number, number][] {
+  if (pts.length < 3) return pts;
+  const out: [number, number][] = [];
+  const n = pts.length;
+  for (let i = 0; i < n - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[i];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2] ?? pts[i + 1];
+    for (let j = 0; j < segments; j++) {
+      const t = j / segments;
+      out.push([
+        catmullRom(p0[0], p1[0], p2[0], p3[0], t),
+        catmullRom(p0[1], p1[1], p2[1], p3[1], t),
+      ]);
+    }
+  }
+  out.push(pts[n - 1]);
+  return out;
+}
+
+function FlyTo({ target }: { target: { lat: number; lng: number; zoom?: number; seq: number } | null }) {
+  const map = useMap();
+  const lastSeq = useRef(-1);
+  useEffect(() => {
+    if (!target || target.seq === lastSeq.current) return;
+    lastSeq.current = target.seq;
+    map.flyTo([target.lat, target.lng], target.zoom ?? map.getZoom(), { duration: 1.2 });
+  }, [map, target]);
+  return null;
+}
+
 type RouteMapProps = {
   waypoints: Waypoint[];
   exitWaypoints?: Waypoint[];
@@ -130,6 +174,7 @@ type RouteMapProps = {
   gpsPosition?: { lat: number; lng: number } | null;
   fitToWaypoints?: boolean;
   followGps?: boolean;
+  flyTo?: { lat: number; lng: number; zoom?: number; seq: number } | null;
 };
 
 export default function RouteMap({
@@ -144,6 +189,7 @@ export default function RouteMap({
   gpsPosition,
   fitToWaypoints = false,
   followGps = false,
+  flyTo = null,
 }: RouteMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const handleClick = useCallback(
@@ -153,8 +199,10 @@ export default function RouteMap({
     },
     [onAddPin, onAddWaypoint, pinMode],
   );
-  const entryLine = waypoints.map((w) => [w.lat, w.lng] as [number, number]);
-  const exitLine = exitWaypoints.map((w) => [w.lat, w.lng] as [number, number]);
+  const entryRaw = waypoints.map((w) => [w.lat, w.lng] as [number, number]);
+  const exitRaw = exitWaypoints.map((w) => [w.lat, w.lng] as [number, number]);
+  const entryLine = smoothPath(entryRaw);
+  const exitLine = smoothPath(exitRaw);
   const allPoints = [...entryLine, ...exitLine];
   const clickable = Boolean(onAddWaypoint || onAddPin);
   const dim = 0.3;
@@ -177,6 +225,7 @@ export default function RouteMap({
       {clickable && <MapClickHandler onMapClick={handleClick} />}
       {fitToWaypoints && allPoints.length > 0 && <FitToBounds points={allPoints} />}
       {followGps && gpsPosition && <FollowGps position={gpsPosition} />}
+      <FlyTo target={flyTo} />
       {entryLine.length > 1 && (
         <Polyline
           positions={entryLine}
