@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Trash2, Save, Check, LogOut, Copy, MapPin, Route as RouteIcon } from "lucide-react";
 import { ClientOnlyMap } from "@/components/RouteMap";
+import LocationSearch from "@/components/LocationSearch";
 import { useAuth } from "@/lib/auth";
 import { supabase, type RouteType } from "@/lib/supabase";
 import { PIN_LABELS, PIN_COLORS, type Pin, type PinLabel } from "@/lib/pins";
@@ -48,10 +49,30 @@ function CreatorPage() {
   const [routeName, setRouteName] = useState("");
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [gpsPos, setGpsPos] = useState<{ lat: number; lng: number } | null>(null);
+  const [flyTarget, setFlyTarget] = useState<{ lat: number; lng: number; zoom?: number; seq: number } | null>(null);
+  const gpsFlewRef = useRef(false);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
   }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    const id = navigator.geolocation.watchPosition(
+      (p) => {
+        const next = { lat: p.coords.latitude, lng: p.coords.longitude };
+        setGpsPos(next);
+        if (!gpsFlewRef.current && !editId) {
+          gpsFlewRef.current = true;
+          setFlyTarget({ ...next, zoom: 17, seq: Date.now() });
+        }
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, [editId]);
 
   useEffect(() => {
     if (!user || !editId) {
@@ -389,9 +410,14 @@ function CreatorPage() {
           onAddPin={startPinPlacement}
           pins={pins}
           pinMode={mode === "pin"}
+          gpsPosition={gpsPos}
+          flyTo={flyTarget}
+        />
+        <LocationSearch
+          onSelect={(lat, lng) => setFlyTarget({ lat, lng, zoom: 17, seq: Date.now() })}
         />
         {mode === "pin" && !pendingPin && (
-          <div className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 z-[1000]">
+          <div className="pointer-events-none absolute top-16 left-1/2 -translate-x-1/2 z-[1000]">
             <div className="px-3 py-1.5 rounded-full bg-orange-500 text-white text-xs font-semibold shadow-lg">
               Tap the map to place a pin
             </div>
