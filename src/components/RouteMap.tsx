@@ -162,6 +162,82 @@ function FlyTo({ target }: { target: { lat: number; lng: number; zoom?: number; 
   return null;
 }
 
+export type BackgroundRoute = {
+  id: string;
+  entry: [number, number][];
+  exit?: [number, number][];
+  routeType?: "two_way" | "two_route";
+};
+
+function routeBounds(r: BackgroundRoute) {
+  const pts = [...r.entry, ...(r.exit ?? [])];
+  if (pts.length === 0) return null;
+  let minLat = pts[0][0], maxLat = pts[0][0], minLng = pts[0][1], maxLng = pts[0][1];
+  for (const [la, ln] of pts) {
+    if (la < minLat) minLat = la;
+    if (la > maxLat) maxLat = la;
+    if (ln < minLng) minLng = ln;
+    if (ln > maxLng) maxLng = ln;
+  }
+  return L.latLngBounds([minLat, minLng], [maxLat, maxLng]);
+}
+
+function BackgroundRoutes({ routes }: { routes: BackgroundRoute[] }) {
+  const map = useMap();
+  const [bounds, setBounds] = useState<L.LatLngBounds | null>(() => {
+    try { return map.getBounds(); } catch { return null; }
+  });
+  useMapEvents({
+    moveend: () => setBounds(map.getBounds()),
+    zoomend: () => setBounds(map.getBounds()),
+  });
+  const useViewport = routes.length > 50;
+  const visible = routes.filter((r) => {
+    if (!useViewport || !bounds) return true;
+    const b = routeBounds(r);
+    return b ? bounds.intersects(b) : false;
+  });
+  return (
+    <>
+      {visible.map((r) => {
+        const entry = smoothPath(r.entry);
+        const exit = r.exit ? smoothPath(r.exit) : [];
+        return (
+          <span key={r.id}>
+            {entry.length > 1 && (
+              <Polyline
+                positions={entry}
+                interactive={false}
+                pathOptions={{
+                  color: ENTRY_COLOR,
+                  weight: 3,
+                  opacity: 0.3,
+                  lineCap: "round",
+                  lineJoin: "round",
+                }}
+              />
+            )}
+            {r.routeType === "two_route" && exit.length > 1 && (
+              <Polyline
+                positions={exit}
+                interactive={false}
+                pathOptions={{
+                  color: EXIT_COLOR,
+                  weight: 3,
+                  opacity: 0.3,
+                  lineCap: "round",
+                  lineJoin: "round",
+                  dashArray: "6 6",
+                }}
+              />
+            )}
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
 type RouteMapProps = {
   waypoints: Waypoint[];
   exitWaypoints?: Waypoint[];
@@ -175,6 +251,7 @@ type RouteMapProps = {
   fitToWaypoints?: boolean;
   followGps?: boolean;
   flyTo?: { lat: number; lng: number; zoom?: number; seq: number } | null;
+  backgroundRoutes?: BackgroundRoute[];
 };
 
 export default function RouteMap({
@@ -190,6 +267,7 @@ export default function RouteMap({
   fitToWaypoints = false,
   followGps = false,
   flyTo = null,
+  backgroundRoutes,
 }: RouteMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const handleClick = useCallback(
@@ -226,6 +304,9 @@ export default function RouteMap({
       {fitToWaypoints && allPoints.length > 0 && <FitToBounds points={allPoints} />}
       {followGps && gpsPosition && <FollowGps position={gpsPosition} />}
       <FlyTo target={flyTo} />
+      {backgroundRoutes && backgroundRoutes.length > 0 && (
+        <BackgroundRoutes routes={backgroundRoutes} />
+      )}
       {entryLine.length > 1 && (
         <Polyline
           positions={entryLine}
