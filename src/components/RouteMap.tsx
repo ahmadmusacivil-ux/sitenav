@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { Fragment, useState, useCallback, useRef, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Polyline, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet-polylinedecorator";
@@ -203,7 +203,7 @@ function BackgroundRoutes({ routes }: { routes: BackgroundRoute[] }) {
         const entry = smoothPath(r.entry);
         const exit = r.exit ? smoothPath(r.exit) : [];
         return (
-          <span key={r.id}>
+          <Fragment key={r.id}>
             {entry.length > 1 && (
               <Polyline
                 positions={entry}
@@ -231,7 +231,7 @@ function BackgroundRoutes({ routes }: { routes: BackgroundRoute[] }) {
                 }}
               />
             )}
-          </span>
+          </Fragment>
         );
       })}
     </>
