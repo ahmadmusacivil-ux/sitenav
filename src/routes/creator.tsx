@@ -1,6 +1,20 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Trash2, Save, Check, LogOut, Copy, MapPin, Route as RouteIcon } from "lucide-react";
+import {
+  ArrowLeft,
+  Trash2,
+  Save,
+  Check,
+  LogOut,
+  Copy,
+  MapPin,
+  Route as RouteIcon,
+  Pencil,
+  Car,
+  Play,
+  Square,
+  RotateCcw,
+} from "lucide-react";
 import { ClientOnlyMap } from "@/components/RouteMap";
 import LocationSearch from "@/components/LocationSearch";
 import { useAuth } from "@/lib/auth";
@@ -52,6 +66,95 @@ function CreatorPage() {
   const [gpsPos, setGpsPos] = useState<{ lat: number; lng: number } | null>(null);
   const [flyTarget, setFlyTarget] = useState<{ lat: number; lng: number; zoom?: number; seq: number } | null>(null);
   const gpsFlewRef = useRef(false);
+
+  // Drive & Record mode
+  const [creatorMode, setCreatorMode] = useState<"draw" | "record">("draw");
+  const [recording, setRecording] = useState(false);
+  const [recordSummary, setRecordSummary] = useState<{ points: number; meters: number; leg: "entry" | "exit" } | null>(null);
+  const recordWatchRef = useRef<number | null>(null);
+  const recordLegRef = useRef<"entry" | "exit">("entry");
+  const lastRecordedRef = useRef<{ lat: number; lng: number } | null>(null);
+  const recordIdRef = useRef(0);
+
+  const haversine = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
+    const R = 6371000;
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const dLat = toRad(b.lat - a.lat);
+    const dLng = toRad(b.lng - a.lng);
+    const s =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(s));
+  };
+
+  const pathDistance = (pts: { lat: number; lng: number }[]) => {
+    let d = 0;
+    for (let i = 1; i < pts.length; i++) d += haversine(pts[i - 1], pts[i]);
+    return d;
+  };
+
+  const stopRecording = () => {
+    if (recordWatchRef.current !== null && typeof navigator !== "undefined") {
+      navigator.geolocation.clearWatch(recordWatchRef.current);
+    }
+    recordWatchRef.current = null;
+    setRecording(false);
+    const leg = recordLegRef.current;
+    const pts = leg === "exit" ? exitWaypoints : waypoints;
+    setRecordSummary({
+      points: pts.length,
+      meters: Math.round(pathDistance(pts)),
+      leg,
+    });
+  };
+
+  const startRecording = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    const leg: "entry" | "exit" =
+      routeType === "two_route" && drawingLeg === "exit" ? "exit" : "entry";
+    recordLegRef.current = leg;
+    if (leg === "exit") setExitWaypoints([]);
+    else setWaypoints([]);
+    lastRecordedRef.current = null;
+    setRecordSummary(null);
+    setRecording(true);
+    recordWatchRef.current = navigator.geolocation.watchPosition(
+      (p) => {
+        const acc = p.coords.accuracy;
+        if (typeof acc === "number" && acc > 20) return;
+        const next = { lat: p.coords.latitude, lng: p.coords.longitude };
+        setGpsPos(next);
+        setFlyTarget({ ...next, zoom: 18, seq: Date.now() });
+        const last = lastRecordedRef.current;
+        if (last && haversine(last, next) < 3) return;
+        lastRecordedRef.current = next;
+        const id = ++recordIdRef.current + 1_000_000;
+        if (recordLegRef.current === "exit") {
+          setExitWaypoints((arr) => [...arr, { id, lat: next.lat, lng: next.lng }]);
+        } else {
+          setWaypoints((arr) => [...arr, { id, lat: next.lat, lng: next.lng }]);
+        }
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 },
+    );
+  };
+
+  const reRecord = () => {
+    const leg = recordSummary?.leg ?? recordLegRef.current;
+    if (leg === "exit") setExitWaypoints([]);
+    else setWaypoints([]);
+    setRecordSummary(null);
+    lastRecordedRef.current = null;
+  };
+
+  useEffect(() => {
+    return () => {
+      if (recordWatchRef.current !== null && typeof navigator !== "undefined") {
+        navigator.geolocation.clearWatch(recordWatchRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
@@ -343,6 +446,35 @@ function CreatorPage() {
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
             <button
+              onClick={() => {
+                if (recording) return;
+                setCreatorMode("draw");
+              }}
+              disabled={recording}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                creatorMode === "draw" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
+              }`}
+              title="Draw mode — tap map to add waypoints"
+            >
+              <Pencil className="w-3.5 h-3.5" /> Draw
+            </button>
+            <button
+              onClick={() => {
+                if (recording) return;
+                setCreatorMode("record");
+                setMode("waypoint");
+              }}
+              disabled={recording}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                creatorMode === "record" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
+              }`}
+              title="Record mode — drive to capture the route"
+            >
+              <Car className="w-3.5 h-3.5" /> Record
+            </button>
+          </div>
+          <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
+            <button
               onClick={() => setRouteType("two_way")}
               className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
                 routeType === "two_way" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
@@ -406,16 +538,74 @@ function CreatorPage() {
           exitWaypoints={exitWaypoints}
           routeType={routeType}
           activeDirection={drawingLeg === "exit" ? "out" : "in"}
-          onAddWaypoint={addWaypoint}
-          onAddPin={startPinPlacement}
+          onAddWaypoint={creatorMode === "draw" && !recording ? addWaypoint : undefined}
+          onAddPin={creatorMode === "draw" && !recording ? startPinPlacement : undefined}
           pins={pins}
-          pinMode={mode === "pin"}
+          pinMode={creatorMode === "draw" && mode === "pin"}
           gpsPosition={gpsPos}
           flyTo={flyTarget}
         />
         <LocationSearch
           onSelect={(lat, lng) => setFlyTarget({ lat, lng, zoom: 17, seq: Date.now() })}
         />
+        {recording && (
+          <div className="absolute top-3 right-3 z-[1000] flex items-center gap-2 bg-black/70 backdrop-blur-sm border border-red-500/60 rounded-full px-3 py-1.5 shadow-lg">
+            <span className="relative flex h-3 w-3">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping" />
+              <span className="relative inline-flex h-3 w-3 rounded-full bg-red-600" />
+            </span>
+            <span className="text-white text-xs font-semibold">REC</span>
+            <span className="text-white/80 text-xs">
+              {(recordLegRef.current === "exit" ? exitWaypoints.length : waypoints.length)} pts
+            </span>
+          </div>
+        )}
+        {creatorMode === "record" && !recording && !recordSummary && (
+          <div className="absolute inset-0 z-[900] pointer-events-none flex items-center justify-center">
+            <button
+              onClick={startRecording}
+              className="pointer-events-auto inline-flex items-center gap-2 px-6 py-4 rounded-full bg-red-500 hover:bg-red-600 text-white text-base font-bold shadow-2xl active:scale-[0.97] transition-all"
+            >
+              <Play className="w-5 h-5 fill-white" />
+              Start Recording
+              {routeType === "two_route" && (
+                <span className="ml-1 text-xs font-normal opacity-90">
+                  ({drawingLeg === "exit" ? "Exit" : "Entry"})
+                </span>
+              )}
+            </button>
+          </div>
+        )}
+        {creatorMode === "record" && recording && (
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000]">
+            <button
+              onClick={stopRecording}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-red-600 hover:bg-red-700 text-white text-sm font-bold shadow-2xl active:scale-[0.97]"
+            >
+              <Square className="w-4 h-4 fill-white" />
+              Stop Recording
+            </button>
+          </div>
+        )}
+        {creatorMode === "record" && !recording && recordSummary && (
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000] bg-navy-950/95 backdrop-blur-sm border border-navy-700 rounded-2xl px-5 py-3 shadow-2xl flex items-center gap-4">
+            <div className="text-white text-sm">
+              <div className="font-semibold">
+                {recordSummary.points} pts • {recordSummary.meters} m
+              </div>
+              <div className="text-navy-400 text-xs">
+                {recordSummary.leg === "exit" ? "Exit" : "Entry"} recorded
+              </div>
+            </div>
+            <button
+              onClick={reRecord}
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-navy-800 hover:bg-navy-700 text-white rounded-lg"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Re-record
+            </button>
+          </div>
+        )}
         {mode === "pin" && !pendingPin && (
           <div className="pointer-events-none absolute top-16 left-1/2 -translate-x-1/2 z-[1000]">
             <div className="px-3 py-1.5 rounded-full bg-orange-500 text-white text-xs font-semibold shadow-lg">
