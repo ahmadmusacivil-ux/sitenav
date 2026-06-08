@@ -15,7 +15,7 @@ import {
   Square,
   RotateCcw,
 } from "lucide-react";
-import { ClientOnlyMap } from "@/components/RouteMap";
+import { ClientOnlyMap, type BackgroundRoute } from "@/components/RouteMap";
 import LocationSearch from "@/components/LocationSearch";
 import { useAuth } from "@/lib/auth";
 import { supabase, type RouteType } from "@/lib/supabase";
@@ -66,6 +66,7 @@ function CreatorPage() {
   const [gpsPos, setGpsPos] = useState<{ lat: number; lng: number } | null>(null);
   const [flyTarget, setFlyTarget] = useState<{ lat: number; lng: number; zoom?: number; seq: number } | null>(null);
   const gpsFlewRef = useRef(false);
+  const [backgroundRoutes, setBackgroundRoutes] = useState<BackgroundRoute[]>([]);
 
   // Drive & Record mode
   const [creatorMode, setCreatorMode] = useState<"draw" | "record">("draw");
@@ -159,6 +160,38 @@ function CreatorPage() {
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
   }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    supabase
+      .from("routes")
+      .select("id,waypoints,exit_waypoints,route_type")
+      .eq("user_id", user.id)
+      .then(({ data }) => {
+        if (cancelled || !data) return;
+        const rows = data as {
+          id: string;
+          waypoints: { lat: number; lng: number }[] | null;
+          exit_waypoints: { lat: number; lng: number }[] | null;
+          route_type: "two_way" | "two_route" | null;
+        }[];
+        const bg: BackgroundRoute[] = rows
+          .filter((r) => r.id !== editId)
+          .map((r) => ({
+            id: r.id,
+            entry: (r.waypoints ?? []).map((w) => [w.lat, w.lng] as [number, number]),
+            exit: (r.exit_waypoints ?? []).map((w) => [w.lat, w.lng] as [number, number]),
+            routeType: r.route_type ?? "two_way",
+          }))
+          .filter((r) => r.entry.length > 1);
+        setBackgroundRoutes(bg);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   useEffect(() => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
@@ -544,6 +577,7 @@ function CreatorPage() {
           pinMode={creatorMode === "draw" && mode === "pin"}
           gpsPosition={gpsPos}
           flyTo={flyTarget}
+          backgroundRoutes={backgroundRoutes}
         />
         <LocationSearch
           onSelect={(lat, lng) => setFlyTarget({ lat, lng, zoom: 17, seq: Date.now() })}
