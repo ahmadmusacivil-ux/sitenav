@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Navigation, MapPin } from "lucide-react";
+import { Navigation, MapPin, Crosshair, Bookmark, BookmarkCheck } from "lucide-react";
 import { ClientOnlyMap } from "@/components/RouteMap";
 import { supabase, type SavedRoute } from "@/lib/supabase";
 import { distanceMeters, PIN_COLORS, type Pin } from "@/lib/pins";
@@ -18,6 +18,9 @@ function FollowerPage() {
   const [geoError, setGeoError] = useState<string | null>(null);
   const [geoDenied, setGeoDenied] = useState(false);
   const [direction, setDirection] = useState<"in" | "out">("in");
+  const [followGps, setFollowGps] = useState(false);
+  const [flyTarget, setFlyTarget] = useState<{ lat: number; lng: number; zoom?: number; seq: number } | null>(null);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     supabase
@@ -30,6 +33,23 @@ function FollowerPage() {
         setLoading(false);
       });
   }, [token]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const arr: string[] = JSON.parse(localStorage.getItem("sitenav:shared_tokens") || "[]");
+      setSaved(arr.includes(token));
+    } catch { /* ignore */ }
+  }, [token]);
+
+  const saveToDashboard = () => {
+    try {
+      const arr: string[] = JSON.parse(localStorage.getItem("sitenav:shared_tokens") || "[]");
+      if (!arr.includes(token)) arr.push(token);
+      localStorage.setItem("sitenav:shared_tokens", JSON.stringify(arr));
+      setSaved(true);
+    } catch { /* ignore */ }
+  };
 
   useEffect(() => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
@@ -83,6 +103,12 @@ function FollowerPage() {
   }));
   const routeType = route.route_type === "two_route" ? "two_route" : "two_way";
   const pins: Pin[] = (route.pins || []).filter((p): p is Pin => !!p && typeof p.lat === "number");
+  const startPoint = waypoints[0];
+  const distanceToStart = pos && startPoint ? distanceMeters(pos, { lat: startPoint.lat, lng: startPoint.lng }) : null;
+  const showNavigateToStart = startPoint && (distanceToStart === null || distanceToStart > 100);
+  const navigateHref = startPoint
+    ? `https://www.google.com/maps/dir/?api=1&destination=${startPoint.lat},${startPoint.lng}`
+    : "#";
 
   const nearbyPin = pos
     ? pins
@@ -117,9 +143,44 @@ function FollowerPage() {
           activeDirection={direction}
           pins={pins}
           gpsPosition={pos}
-          fitToWaypoints={!pos}
-          followGps
+          fitToWaypoints={!followGps}
+          followGps={followGps}
+          flyTo={flyTarget}
         />
+        <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-2 items-end">
+          <button
+            onClick={() => {
+              if (!pos) return;
+              setFollowGps(true);
+              setFlyTarget({ lat: pos.lat, lng: pos.lng, zoom: 17, seq: Date.now() });
+            }}
+            disabled={!pos}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-navy-950/90 hover:bg-navy-900 text-white border border-navy-700 rounded-full shadow-lg backdrop-blur-sm disabled:opacity-40"
+            title="Center on my location"
+          >
+            <Crosshair className="w-3.5 h-3.5" />
+            My Location
+          </button>
+          <button
+            onClick={saveToDashboard}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-navy-950/90 hover:bg-navy-900 text-white border border-navy-700 rounded-full shadow-lg backdrop-blur-sm"
+            title={saved ? "Saved to your dashboard" : "Save to your dashboard"}
+          >
+            {saved ? <BookmarkCheck className="w-3.5 h-3.5 text-green-400" /> : <Bookmark className="w-3.5 h-3.5" />}
+            {saved ? "Saved" : "Save"}
+          </button>
+        </div>
+        {showNavigateToStart && (
+          <a
+            href={navigateHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="absolute top-3 left-3 z-[1000] inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold bg-orange-500 hover:bg-orange-600 text-white rounded-full shadow-xl active:scale-[0.97]"
+          >
+            <Navigation className="w-4 h-4" />
+            Navigate to Start
+          </a>
+        )}
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] flex items-center bg-navy-950/90 backdrop-blur-sm border border-navy-700 rounded-full p-0.5 shadow-lg">
           <button
             onClick={() => setDirection("in")}

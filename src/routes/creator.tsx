@@ -14,6 +14,8 @@ import {
   Play,
   Square,
   RotateCcw,
+  Undo2,
+  Wrench,
 } from "lucide-react";
 import { ClientOnlyMap, type BackgroundRoute } from "@/components/RouteMap";
 import LocationSearch from "@/components/LocationSearch";
@@ -71,6 +73,7 @@ function CreatorPage() {
   // Drive & Record mode
   const [creatorMode, setCreatorMode] = useState<"draw" | "record">("draw");
   const [recording, setRecording] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const [recordSummary, setRecordSummary] = useState<{ points: number; meters: number; leg: "entry" | "exit" } | null>(null);
   const recordWatchRef = useRef<number | null>(null);
   const recordLegRef = useRef<"entry" | "exit">("entry");
@@ -94,6 +97,26 @@ function CreatorPage() {
     return d;
   };
 
+  const smoothWaypoints = (pts: Waypoint[]): Waypoint[] => {
+    if (pts.length < 3) return pts;
+    const filtered: Waypoint[] = [pts[0]];
+    for (let i = 1; i < pts.length - 1; i++) {
+      const mid = {
+        lat: (pts[i - 1].lat + pts[i + 1].lat) / 2,
+        lng: (pts[i - 1].lng + pts[i + 1].lng) / 2,
+      };
+      if (haversine(mid, pts[i]) <= 10) filtered.push(pts[i]);
+    }
+    filtered.push(pts[pts.length - 1]);
+    const smoothed: Waypoint[] = filtered.map((p, i, a) => {
+      if (i === 0 || i === a.length - 1) return p;
+      const lat = (a[i - 1].lat + p.lat + a[i + 1].lat) / 3;
+      const lng = (a[i - 1].lng + p.lng + a[i + 1].lng) / 3;
+      return { ...p, lat, lng };
+    });
+    return smoothed;
+  };
+
   const stopRecording = () => {
     if (recordWatchRef.current !== null && typeof navigator !== "undefined") {
       navigator.geolocation.clearWatch(recordWatchRef.current);
@@ -101,7 +124,10 @@ function CreatorPage() {
     recordWatchRef.current = null;
     setRecording(false);
     const leg = recordLegRef.current;
-    const pts = leg === "exit" ? exitWaypoints : waypoints;
+    let pts = leg === "exit" ? exitWaypoints : waypoints;
+    pts = smoothWaypoints(pts);
+    if (leg === "exit") setExitWaypoints(pts);
+    else setWaypoints(pts);
     setRecordSummary({
       points: pts.length,
       meters: Math.round(pathDistance(pts)),
@@ -122,12 +148,12 @@ function CreatorPage() {
     recordWatchRef.current = navigator.geolocation.watchPosition(
       (p) => {
         const acc = p.coords.accuracy;
-        if (typeof acc === "number" && acc > 20) return;
+        if (typeof acc === "number" && acc > 15) return;
         const next = { lat: p.coords.latitude, lng: p.coords.longitude };
         setGpsPos(next);
         setFlyTarget({ ...next, zoom: 18, seq: Date.now() });
         const last = lastRecordedRef.current;
-        if (last && haversine(last, next) < 3) return;
+        if (last && haversine(last, next) < 5) return;
         lastRecordedRef.current = next;
         const id = ++recordIdRef.current + 1_000_000;
         if (recordLegRef.current === "exit") {
@@ -166,12 +192,13 @@ function CreatorPage() {
     let cancelled = false;
     supabase
       .from("routes")
-      .select("id,waypoints,exit_waypoints,route_type")
+      .select("id,name,waypoints,exit_waypoints,route_type")
       .eq("user_id", user.id)
       .then(({ data }) => {
         if (cancelled || !data) return;
         const rows = data as {
           id: string;
+          name: string;
           waypoints: { lat: number; lng: number }[] | null;
           exit_waypoints: { lat: number; lng: number }[] | null;
           route_type: "two_way" | "two_route" | null;
@@ -180,6 +207,7 @@ function CreatorPage() {
           .filter((r) => r.id !== editId)
           .map((r) => ({
             id: r.id,
+            name: r.name,
             entry: (r.waypoints ?? []).map((w) => [w.lat, w.lng] as [number, number]),
             exit: (r.exit_waypoints ?? []).map((w) => [w.lat, w.lng] as [number, number]),
             routeType: r.route_type ?? "two_way",
@@ -257,12 +285,45 @@ function CreatorPage() {
   }, [editId, user]);
 
   const addWaypoint = (lat: number, lng: number) => {
+    if (editMode) return;
     if (routeType === "two_route" && drawingLeg === "exit") {
       setExitWaypoints((p) => [...p, { id: nextId, lat, lng }]);
     } else {
       setWaypoints((p) => [...p, { id: nextId, lat, lng }]);
     }
     setNextId((n) => n + 1);
+  };
+
+  const undoLastWaypoint = () => {
+    if (routeType === "two_route" && drawingLeg === "exit") {
+      setExitWaypoints((p) => p.slice(0, -1));
+    } else {
+      setWaypoints((p) => p.slice(0, -1));
+    }
+  };
+
+  const handleMoveWaypoint = (leg: "entry" | "exit", id: number, lat: number, lng: number) => {
+    const updater = (arr: Waypoint[]) => arr.map((w) => (w.id === id ? { ...w, lat, lng } : w));
+    if (leg === "exit") setExitWaypoints(updater);
+    else setWaypoints(updater);
+  };
+
+  const handleDeleteWaypoint = (leg: "entry" | "exit", id: number) => {
+    const updater = (arr: Waypoint[]) => arr.filter((w) => w.id !== id);
+    if (leg === "exit") setExitWaypoints(updater);
+    else setWaypoints(updater);
+  };
+
+  const handleInsertWaypoint = (leg: "entry" | "exit", afterIndex: number, lat: number, lng: number) => {
+    const newWp: Waypoint = { id: nextId, lat, lng };
+    setNextId((n) => n + 1);
+    const updater = (arr: Waypoint[]) => {
+      const next = arr.slice();
+      next.splice(afterIndex + 1, 0, newWp);
+      return next;
+    };
+    if (leg === "exit") setExitWaypoints(updater);
+    else setWaypoints(updater);
   };
 
   const startPinPlacement = (lat: number, lng: number) => {
@@ -443,6 +504,20 @@ function CreatorPage() {
               <span className="hidden xs:inline">Clear</span>
             </button>
             <button
+              onClick={undoLastWaypoint}
+              disabled={
+                creatorMode !== "draw" ||
+                ((routeType === "two_route" && drawingLeg === "exit"
+                  ? exitWaypoints.length
+                  : waypoints.length) === 0)
+              }
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-navy-800 hover:bg-navy-700 text-navy-300 hover:text-white rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Undo last waypoint"
+            >
+              <Undo2 className="w-4 h-4" />
+              <span className="hidden xs:inline">Undo</span>
+            </button>
+            <button
               onClick={openSavePrompt}
               disabled={!canSave || saveStatus === "saving"}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.97]"
@@ -506,6 +581,19 @@ function CreatorPage() {
               <Car className="w-3.5 h-3.5" /> Record
             </button>
           </div>
+          {(waypoints.length > 0 || exitWaypoints.length > 0) && creatorMode === "draw" && (
+            <button
+              onClick={() => setEditMode((v) => !v)}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                editMode
+                  ? "bg-orange-500 text-white"
+                  : "bg-navy-800/80 text-navy-300 hover:text-white"
+              }`}
+              title="Edit route — drag to move, click marker to delete, click line to insert"
+            >
+              <Wrench className="w-3.5 h-3.5" /> {editMode ? "Editing" : "Edit Route"}
+            </button>
+          )}
           <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
             <button
               onClick={() => setRouteType("two_way")}
@@ -571,13 +659,19 @@ function CreatorPage() {
           exitWaypoints={exitWaypoints}
           routeType={routeType}
           activeDirection={drawingLeg === "exit" ? "out" : "in"}
-          onAddWaypoint={creatorMode === "draw" && !recording ? addWaypoint : undefined}
+          onAddWaypoint={creatorMode === "draw" && !recording && !editMode ? addWaypoint : undefined}
           onAddPin={creatorMode === "draw" && !recording ? startPinPlacement : undefined}
           pins={pins}
           pinMode={creatorMode === "draw" && mode === "pin"}
           gpsPosition={gpsPos}
           flyTo={flyTarget}
           backgroundRoutes={backgroundRoutes}
+          hideWaypointMarkers={recording}
+          editMode={editMode}
+          editLeg={routeType === "two_route" ? drawingLeg : "entry"}
+          onMoveWaypoint={handleMoveWaypoint}
+          onDeleteWaypoint={handleDeleteWaypoint}
+          onInsertWaypoint={handleInsertWaypoint}
         />
         <LocationSearch
           onSelect={(lat, lng) => setFlyTarget({ lat, lng, zoom: 17, seq: Date.now() })}
@@ -644,6 +738,13 @@ function CreatorPage() {
           <div className="pointer-events-none absolute top-16 left-1/2 -translate-x-1/2 z-[1000]">
             <div className="px-3 py-1.5 rounded-full bg-orange-500 text-white text-xs font-semibold shadow-lg">
               Tap the map to place a pin
+            </div>
+          </div>
+        )}
+        {editMode && creatorMode === "draw" && (
+          <div className="pointer-events-none absolute top-16 left-1/2 -translate-x-1/2 z-[1000]">
+            <div className="px-3 py-1.5 rounded-full bg-orange-500/95 text-white text-xs font-semibold shadow-lg whitespace-nowrap">
+              Drag to move • Tap marker to delete • Tap line to insert
             </div>
           </div>
         )}
