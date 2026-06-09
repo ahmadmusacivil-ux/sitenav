@@ -283,12 +283,45 @@ function CreatorPage() {
   }, [editId, user]);
 
   const addWaypoint = (lat: number, lng: number) => {
+    if (editMode) return;
     if (routeType === "two_route" && drawingLeg === "exit") {
       setExitWaypoints((p) => [...p, { id: nextId, lat, lng }]);
     } else {
       setWaypoints((p) => [...p, { id: nextId, lat, lng }]);
     }
     setNextId((n) => n + 1);
+  };
+
+  const undoLastWaypoint = () => {
+    if (routeType === "two_route" && drawingLeg === "exit") {
+      setExitWaypoints((p) => p.slice(0, -1));
+    } else {
+      setWaypoints((p) => p.slice(0, -1));
+    }
+  };
+
+  const handleMoveWaypoint = (leg: "entry" | "exit", id: number, lat: number, lng: number) => {
+    const updater = (arr: Waypoint[]) => arr.map((w) => (w.id === id ? { ...w, lat, lng } : w));
+    if (leg === "exit") setExitWaypoints(updater);
+    else setWaypoints(updater);
+  };
+
+  const handleDeleteWaypoint = (leg: "entry" | "exit", id: number) => {
+    const updater = (arr: Waypoint[]) => arr.filter((w) => w.id !== id);
+    if (leg === "exit") setExitWaypoints(updater);
+    else setWaypoints(updater);
+  };
+
+  const handleInsertWaypoint = (leg: "entry" | "exit", afterIndex: number, lat: number, lng: number) => {
+    const newWp: Waypoint = { id: nextId, lat, lng };
+    setNextId((n) => n + 1);
+    const updater = (arr: Waypoint[]) => {
+      const next = arr.slice();
+      next.splice(afterIndex + 1, 0, newWp);
+      return next;
+    };
+    if (leg === "exit") setExitWaypoints(updater);
+    else setWaypoints(updater);
   };
 
   const startPinPlacement = (lat: number, lng: number) => {
