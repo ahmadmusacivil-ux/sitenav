@@ -129,7 +129,7 @@ function Dashboard() {
         </div>
 
         {tab === "mine" ? (
-        {routes === null ? null : routes.length === 0 ? (
+          routes === null ? null : routes.length === 0 ? (
           <div className="text-center py-20 border border-dashed border-navy-700 rounded-2xl">
             <MapPin className="w-10 h-10 text-navy-600 mx-auto mb-3" />
             <p className="text-navy-300 mb-1">No routes yet</p>
@@ -142,7 +142,7 @@ function Dashboard() {
               Create Route
             </Link>
           </div>
-        ) : (
+          ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {routes.map((r) => (
               <div
@@ -200,8 +200,8 @@ function Dashboard() {
                 </div>
               </div>
             ))}
-          </div>
-        )
+            </div>
+          )
         ) : (
           sharedRoutes === null ? null : sharedRoutes.length === 0 ? (
             <div className="text-center py-20 border border-dashed border-navy-700 rounded-2xl">
