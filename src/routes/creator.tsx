@@ -632,13 +632,19 @@ function CreatorPage() {
           exitWaypoints={exitWaypoints}
           routeType={routeType}
           activeDirection={drawingLeg === "exit" ? "out" : "in"}
-          onAddWaypoint={creatorMode === "draw" && !recording ? addWaypoint : undefined}
+          onAddWaypoint={creatorMode === "draw" && !recording && !editMode ? addWaypoint : undefined}
           onAddPin={creatorMode === "draw" && !recording ? startPinPlacement : undefined}
           pins={pins}
           pinMode={creatorMode === "draw" && mode === "pin"}
           gpsPosition={gpsPos}
           flyTo={flyTarget}
           backgroundRoutes={backgroundRoutes}
+          hideWaypointMarkers={recording}
+          editMode={editMode}
+          editLeg={routeType === "two_route" ? drawingLeg : "entry"}
+          onMoveWaypoint={handleMoveWaypoint}
+          onDeleteWaypoint={handleDeleteWaypoint}
+          onInsertWaypoint={handleInsertWaypoint}
         />
         <LocationSearch
           onSelect={(lat, lng) => setFlyTarget({ lat, lng, zoom: 17, seq: Date.now() })}
