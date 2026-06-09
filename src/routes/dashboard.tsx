@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Share2, Trash2, MapPin, Check, Eye, Pin as PinIcon } from "lucide-react";
+import { Plus, Share2, Trash2, MapPin, Check, Eye, Pin as PinIcon, User } from "lucide-react";
 import { supabase, type SavedRoute } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import AppHeader from "@/components/AppHeader";
@@ -14,6 +14,8 @@ function Dashboard() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [routes, setRoutes] = useState<SavedRoute[] | null>(null);
+  const [sharedRoutes, setSharedRoutes] = useState<SavedRoute[] | null>(null);
+  const [tab, setTab] = useState<"mine" | "shared">("mine");
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -25,14 +27,45 @@ function Dashboard() {
     supabase
       .from("routes")
       .select("*")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .then(({ data }) => setRoutes((data as SavedRoute[]) ?? []));
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    let tokens: string[] = [];
+    try {
+      tokens = JSON.parse(localStorage.getItem("sitenav:shared_tokens") || "[]");
+    } catch { /* ignore */ }
+    if (tokens.length === 0) {
+      setSharedRoutes([]);
+      return;
+    }
+    supabase
+      .from("routes")
+      .select("*")
+      .in("share_token", tokens)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        const rows = ((data as SavedRoute[]) ?? []).filter((r) => r.user_id !== user.id);
+        setSharedRoutes(rows);
+      });
   }, [user]);
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this route?")) return;
     const { error } = await supabase.from("routes").delete().eq("id", id);
     if (!error) setRoutes((r) => r?.filter((x) => x.id !== id) ?? null);
+  };
+
+  const handleRemoveShared = (r: SavedRoute) => {
+    try {
+      const arr: string[] = JSON.parse(localStorage.getItem("sitenav:shared_tokens") || "[]");
+      const next = arr.filter((t) => t !== r.share_token);
+      localStorage.setItem("sitenav:shared_tokens", JSON.stringify(next));
+      setSharedRoutes((rs) => rs?.filter((x) => x.id !== r.id) ?? null);
+    } catch { /* ignore */ }
   };
 
   const shareUrl = (token: string) =>
@@ -61,7 +94,9 @@ function Dashboard() {
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold">Your Routes</h1>
             <p className="text-navy-400 text-sm mt-1">
-              {routes ? `${routes.length} route${routes.length === 1 ? "" : "s"}` : "Loading…"}
+              {tab === "mine"
+                ? routes ? `${routes.length} route${routes.length === 1 ? "" : "s"}` : "Loading…"
+                : sharedRoutes ? `${sharedRoutes.length} shared route${sharedRoutes.length === 1 ? "" : "s"}` : "Loading…"}
             </p>
           </div>
           <Link
@@ -74,6 +109,26 @@ function Dashboard() {
           </Link>
         </div>
 
+        <div className="mb-6 inline-flex items-center bg-navy-800/60 border border-navy-700 rounded-xl p-1">
+          <button
+            onClick={() => setTab("mine")}
+            className={`px-4 py-1.5 text-sm font-semibold rounded-lg transition-colors ${
+              tab === "mine" ? "bg-orange-500 text-white" : "text-navy-300 hover:text-white"
+            }`}
+          >
+            My Routes
+          </button>
+          <button
+            onClick={() => setTab("shared")}
+            className={`px-4 py-1.5 text-sm font-semibold rounded-lg transition-colors ${
+              tab === "shared" ? "bg-orange-500 text-white" : "text-navy-300 hover:text-white"
+            }`}
+          >
+            Shared with Me
+          </button>
+        </div>
+
+        {tab === "mine" ? (
         {routes === null ? null : routes.length === 0 ? (
           <div className="text-center py-20 border border-dashed border-navy-700 rounded-2xl">
             <MapPin className="w-10 h-10 text-navy-600 mx-auto mb-3" />
@@ -146,6 +201,62 @@ function Dashboard() {
               </div>
             ))}
           </div>
+        )
+        ) : (
+          sharedRoutes === null ? null : sharedRoutes.length === 0 ? (
+            <div className="text-center py-20 border border-dashed border-navy-700 rounded-2xl">
+              <Share2 className="w-10 h-10 text-navy-600 mx-auto mb-3" />
+              <p className="text-navy-300 mb-1">No shared routes yet</p>
+              <p className="text-navy-500 text-sm">
+                Open a shared link and tap "Save" to add it here.
+              </p>
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {sharedRoutes.map((r) => (
+                <div
+                  key={r.id}
+                  className="bg-navy-800/60 border border-navy-700 rounded-2xl p-5 hover:border-navy-600 transition-colors"
+                >
+                  <div className="flex items-start gap-2 mb-3">
+                    <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                      <Share2 className="w-4 h-4 text-blue-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-semibold truncate">{r.name}</h3>
+                      <p className="text-xs text-navy-400 flex items-center gap-2 flex-wrap">
+                        <span>{new Date(r.created_at).toLocaleDateString()}</span>
+                        <span className="inline-flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          {Array.isArray(r.waypoints) ? r.waypoints.length : 0} pts
+                        </span>
+                      </p>
+                      <p className="text-xs text-navy-500 mt-1 flex items-center gap-1 truncate">
+                        <User className="w-3 h-3" />
+                        Shared by {r.user_id.slice(0, 8)}…
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Link
+                      to="/route/$token"
+                      params={{ token: r.share_token }}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
+                    >
+                      <Eye className="w-3.5 h-3.5" /> View
+                    </Link>
+                    <button
+                      onClick={() => handleRemoveShared(r)}
+                      className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
+                      title="Remove from shared list"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
         )}
       </main>
     </div>
