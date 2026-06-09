@@ -192,12 +192,13 @@ function CreatorPage() {
     let cancelled = false;
     supabase
       .from("routes")
-      .select("id,waypoints,exit_waypoints,route_type")
+      .select("id,name,waypoints,exit_waypoints,route_type")
       .eq("user_id", user.id)
       .then(({ data }) => {
         if (cancelled || !data) return;
         const rows = data as {
           id: string;
+          name: string;
           waypoints: { lat: number; lng: number }[] | null;
           exit_waypoints: { lat: number; lng: number }[] | null;
           route_type: "two_way" | "two_route" | null;
@@ -206,6 +207,7 @@ function CreatorPage() {
           .filter((r) => r.id !== editId)
           .map((r) => ({
             id: r.id,
+            name: r.name,
             entry: (r.waypoints ?? []).map((w) => [w.lat, w.lng] as [number, number]),
             exit: (r.exit_waypoints ?? []).map((w) => [w.lat, w.lng] as [number, number]),
             routeType: r.route_type ?? "two_way",
