@@ -504,6 +504,20 @@ function CreatorPage() {
               <span className="hidden xs:inline">Clear</span>
             </button>
             <button
+              onClick={undoLastWaypoint}
+              disabled={
+                creatorMode !== "draw" ||
+                ((routeType === "two_route" && drawingLeg === "exit"
+                  ? exitWaypoints.length
+                  : waypoints.length) === 0)
+              }
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-navy-800 hover:bg-navy-700 text-navy-300 hover:text-white rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Undo last waypoint"
+            >
+              <Undo2 className="w-4 h-4" />
+              <span className="hidden xs:inline">Undo</span>
+            </button>
+            <button
               onClick={openSavePrompt}
               disabled={!canSave || saveStatus === "saving"}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.97]"
