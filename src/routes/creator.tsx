@@ -148,12 +148,12 @@ function CreatorPage() {
     recordWatchRef.current = navigator.geolocation.watchPosition(
       (p) => {
         const acc = p.coords.accuracy;
-        if (typeof acc === "number" && acc > 20) return;
+        if (typeof acc === "number" && acc > 15) return;
         const next = { lat: p.coords.latitude, lng: p.coords.longitude };
         setGpsPos(next);
         setFlyTarget({ ...next, zoom: 18, seq: Date.now() });
         const last = lastRecordedRef.current;
-        if (last && haversine(last, next) < 3) return;
+        if (last && haversine(last, next) < 5) return;
         lastRecordedRef.current = next;
         const id = ++recordIdRef.current + 1_000_000;
         if (recordLegRef.current === "exit") {
