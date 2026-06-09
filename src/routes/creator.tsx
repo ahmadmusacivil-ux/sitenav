@@ -581,6 +581,19 @@ function CreatorPage() {
               <Car className="w-3.5 h-3.5" /> Record
             </button>
           </div>
+          {(waypoints.length > 0 || exitWaypoints.length > 0) && creatorMode === "draw" && (
+            <button
+              onClick={() => setEditMode((v) => !v)}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                editMode
+                  ? "bg-orange-500 text-white"
+                  : "bg-navy-800/80 text-navy-300 hover:text-white"
+              }`}
+              title="Edit route — drag to move, click marker to delete, click line to insert"
+            >
+              <Wrench className="w-3.5 h-3.5" /> {editMode ? "Editing" : "Edit Route"}
+            </button>
+          )}
           <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
             <button
               onClick={() => setRouteType("two_way")}
