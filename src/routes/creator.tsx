@@ -73,6 +73,7 @@ function CreatorPage() {
   // Drive & Record mode
   const [creatorMode, setCreatorMode] = useState<"draw" | "record">("draw");
   const [recording, setRecording] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const [recordSummary, setRecordSummary] = useState<{ points: number; meters: number; leg: "entry" | "exit" } | null>(null);
   const recordWatchRef = useRef<number | null>(null);
   const recordLegRef = useRef<"entry" | "exit">("entry");
@@ -96,6 +97,26 @@ function CreatorPage() {
     return d;
   };
 
+  const smoothWaypoints = (pts: Waypoint[]): Waypoint[] => {
+    if (pts.length < 3) return pts;
+    const filtered: Waypoint[] = [pts[0]];
+    for (let i = 1; i < pts.length - 1; i++) {
+      const mid = {
+        lat: (pts[i - 1].lat + pts[i + 1].lat) / 2,
+        lng: (pts[i - 1].lng + pts[i + 1].lng) / 2,
+      };
+      if (haversine(mid, pts[i]) <= 10) filtered.push(pts[i]);
+    }
+    filtered.push(pts[pts.length - 1]);
+    const smoothed: Waypoint[] = filtered.map((p, i, a) => {
+      if (i === 0 || i === a.length - 1) return p;
+      const lat = (a[i - 1].lat + p.lat + a[i + 1].lat) / 3;
+      const lng = (a[i - 1].lng + p.lng + a[i + 1].lng) / 3;
+      return { ...p, lat, lng };
+    });
+    return smoothed;
+  };
+
   const stopRecording = () => {
     if (recordWatchRef.current !== null && typeof navigator !== "undefined") {
       navigator.geolocation.clearWatch(recordWatchRef.current);
@@ -103,7 +124,10 @@ function CreatorPage() {
     recordWatchRef.current = null;
     setRecording(false);
     const leg = recordLegRef.current;
-    const pts = leg === "exit" ? exitWaypoints : waypoints;
+    let pts = leg === "exit" ? exitWaypoints : waypoints;
+    pts = smoothWaypoints(pts);
+    if (leg === "exit") setExitWaypoints(pts);
+    else setWaypoints(pts);
     setRecordSummary({
       points: pts.length,
       meters: Math.round(pathDistance(pts)),
