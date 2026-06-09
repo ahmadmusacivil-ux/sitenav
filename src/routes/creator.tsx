@@ -14,6 +14,8 @@ import {
   Play,
   Square,
   RotateCcw,
+  Undo2,
+  Wrench,
 } from "lucide-react";
 import { ClientOnlyMap, type BackgroundRoute } from "@/components/RouteMap";
 import LocationSearch from "@/components/LocationSearch";
