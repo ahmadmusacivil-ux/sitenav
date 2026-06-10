@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Navigation, MapPin, Crosshair, Bookmark, BookmarkCheck } from "lucide-react";
-import { ClientOnlyMap } from "@/components/RouteMap";
+import { ClientOnlyMap } from "@/components/ClientOnlyMap";
 import { supabase, type SavedRoute } from "@/lib/supabase";
 import { distanceMeters, PIN_COLORS, type Pin } from "@/lib/pins";
 
@@ -155,11 +155,13 @@ function FollowerPage() {
               setFlyTarget({ lat: pos.lat, lng: pos.lng, zoom: 17, seq: Date.now() });
             }}
             disabled={!pos}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-navy-950/90 hover:bg-navy-900 text-white border border-navy-700 rounded-full shadow-lg backdrop-blur-sm disabled:opacity-40"
+            className={`inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold rounded-full shadow-lg backdrop-blur-sm border transition-colors disabled:opacity-40 disabled:pointer-events-none ${
+              pos ? "bg-blue-600 hover:bg-blue-500 text-white border-blue-400" : "bg-navy-950/90 text-navy-400 border-navy-700"
+            }`}
             title="Center on my location"
           >
-            <Crosshair className="w-3.5 h-3.5" />
-            My Location
+            <Crosshair className="w-4 h-4" />
+            Go to My Location
           </button>
           <button
             onClick={saveToDashboard}

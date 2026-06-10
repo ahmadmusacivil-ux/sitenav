@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Pencil, Navigation } from "lucide-react";
-import { ClientOnlyMap } from "@/components/RouteMap";
+import { ClientOnlyMap } from "@/components/ClientOnlyMap";
 import { supabase, type SavedRoute } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import type { Pin } from "@/lib/pins";
