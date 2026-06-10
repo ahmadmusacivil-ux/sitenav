@@ -252,7 +252,7 @@ function BackgroundRoutes({ routes }: { routes: BackgroundRoute[] }) {
   );
 }
 
-type RouteMapProps = {
+export type RouteMapProps = {
   waypoints: Waypoint[];
   exitWaypoints?: Waypoint[];
   routeType?: "two_way" | "two_route";
@@ -308,6 +308,7 @@ export default function RouteMap({
   const exitRaw = exitWaypoints.map((w) => [w.lat, w.lng] as [number, number]);
   const entryLine = smoothPath(entryRaw);
   const exitLine = smoothPath(exitRaw);
+  const rawPoints = [...entryRaw, ...exitRaw];
   const allPoints = [...entryLine, ...exitLine];
   const clickable = Boolean(onAddWaypoint || onAddPin);
   const dim = 0.3;
@@ -343,7 +344,7 @@ export default function RouteMap({
         maxZoom={19}
       />
       {clickable && <MapClickHandler onMapClick={handleClick} />}
-      {fitToWaypoints && allPoints.length > 0 && <FitToBounds points={allPoints} />}
+      {fitToWaypoints && rawPoints.length > 0 && <FitToBounds points={rawPoints} />}
       {followGps && gpsPosition && <FollowGps position={gpsPosition} />}
       <FlyTo target={flyTo} />
       {backgroundRoutes && backgroundRoutes.length > 0 && (
@@ -459,11 +460,4 @@ export default function RouteMap({
       )}
     </MapContainer>
   );
-}
-
-export function ClientOnlyMap(props: RouteMapProps) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  if (!mounted) return <div className="absolute inset-0 bg-navy-950" />;
-  return <RouteMap {...props} />;
 }

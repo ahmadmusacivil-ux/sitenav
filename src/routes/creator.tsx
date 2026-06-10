@@ -17,7 +17,8 @@ import {
   Undo2,
   Wrench,
 } from "lucide-react";
-import { ClientOnlyMap, type BackgroundRoute } from "@/components/RouteMap";
+import { ClientOnlyMap } from "@/components/ClientOnlyMap";
+import { type BackgroundRoute } from "@/components/RouteMap";
 import LocationSearch from "@/components/LocationSearch";
 import { useAuth } from "@/lib/auth";
 import { supabase, type RouteType } from "@/lib/supabase";
