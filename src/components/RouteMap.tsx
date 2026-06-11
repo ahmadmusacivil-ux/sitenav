@@ -196,7 +196,7 @@ export type BackgroundRoute = {
   name?: string;
   entry: [number, number][];
   exit?: [number, number][];
-  routeType?: "two_way" | "two_route" | "multi_movement";
+  routeType?: "one_way" | "multi_movement";
 };
 
 function routeBounds(r: BackgroundRoute) {
@@ -252,7 +252,7 @@ function BackgroundRoutes({ routes }: { routes: BackgroundRoute[] }) {
                 )}
               </Polyline>
             )}
-            {r.routeType === "two_route" && exit.length > 1 && (
+            {exit.length > 1 && (
               <Polyline
                 positions={exit}
                 pathOptions={{
@@ -280,7 +280,7 @@ function BackgroundRoutes({ routes }: { routes: BackgroundRoute[] }) {
 export type RouteMapProps = {
   waypoints: Waypoint[];
   exitWaypoints?: Waypoint[];
-  routeType?: "two_way" | "two_route" | "multi_movement";
+  routeType?: "one_way" | "multi_movement";
   multiMovementPoints?: SegmentPoint[];
   activeDirection?: "in" | "out";
   onAddWaypoint?: (lat: number, lng: number) => void;
@@ -304,7 +304,7 @@ export type RouteMapProps = {
 export default function RouteMap({
   waypoints,
   exitWaypoints = [],
-  routeType = "two_way",
+  routeType = "one_way",
   multiMovementPoints = [],
   activeDirection = "in",
   onAddWaypoint,
@@ -337,26 +337,27 @@ export default function RouteMap({
   const exitRaw = exitWaypoints.map((w) => [w.lat, w.lng] as [number, number]);
   const entryLine = smoothPath(entryRaw);
   const exitLine = smoothPath(exitRaw);
-  const mmRaw = multiMovementPoints.map((p) => [p.lat, p.lng] as [number, number]);
+  // For multi_movement, filter visible segments by direction: in=drive, out=walk.
+  const mmFiltered = multiMovementPoints.filter((p) => {
+    if (routeType !== "multi_movement") return true;
+    const t = p.t ?? "drive";
+    return activeDirection === "out" ? t === "walk" : t === "drive";
+  });
+  const mmRaw = mmFiltered.map((p) => [p.lat, p.lng] as [number, number]);
   const rawPoints =
     routeType === "multi_movement" ? mmRaw : [...entryRaw, ...exitRaw];
   const clickable = Boolean(onAddWaypoint || onAddPin);
   const dim = 0.3;
   const bright = 0.95;
 
-  // Build connected segments for multi_movement: park/stop break lines.
+  // Build connected segments for multi_movement from the filtered list.
   type MMSeg = { type: SegmentType; pts: [number, number][] };
   const mmSegments: MMSeg[] = [];
-  if (routeType === "multi_movement" && multiMovementPoints.length > 1) {
+  if (routeType === "multi_movement" && mmFiltered.length > 1) {
     let cur: MMSeg | null = null;
-    for (let i = 1; i < multiMovementPoints.length; i++) {
-      const prev = multiMovementPoints[i - 1];
-      const p = multiMovementPoints[i];
-      const isBreak = p.t === "park" || p.t === "stop" || prev.t === "park" || prev.t === "stop";
-      if (isBreak) {
-        cur = null;
-        continue;
-      }
+    for (let i = 1; i < mmFiltered.length; i++) {
+      const prev = mmFiltered[i - 1];
+      const p = mmFiltered[i];
       const t: SegmentType = p.t === "walk" ? "walk" : "drive";
       if (!cur || cur.type !== t) {
         cur = { type: t, pts: [[prev.lat, prev.lng], [p.lat, p.lng]] };
@@ -423,19 +424,11 @@ export default function RouteMap({
           reverse={false}
         />
       )}
-      {routeType === "two_way" && entryLine.length > 1 && (
-        <DirectionArrows
-          points={entryLine}
-          color={REVERSE_COLOR}
-          opacity={activeDirection === "out" ? bright : dim}
-          reverse={true}
-        />
-      )}
-      {routeType === "two_route" && exitLine.length > 1 && (
+      {routeType === "one_way" && exitLine.length > 1 && (
         <>
           <Polyline
             positions={exitLine}
-            pathOptions={{ color: EXIT_COLOR, weight: 3, opacity: 0.9, lineCap: "round", lineJoin: "round" }}
+            pathOptions={{ color: REVERSE_COLOR, weight: 3, opacity: 0.9, lineCap: "round", lineJoin: "round" }}
             eventHandlers={
               editMode && editLeg === "exit" && editTool === "add"
                 ? { click: (e) => insertOnLine("exit", exitRaw, e) }
@@ -444,7 +437,7 @@ export default function RouteMap({
           />
           <DirectionArrows
             points={exitLine}
-            color={EXIT_COLOR}
+            color={REVERSE_COLOR}
             opacity={activeDirection === "out" ? bright : dim}
             reverse={false}
           />
@@ -469,18 +462,12 @@ export default function RouteMap({
         );
       })}
       {routeType === "multi_movement" && !hideWaypointMarkers &&
-        multiMovementPoints.map((p, i) => (
+        mmFiltered.map((p, i) => (
           <Marker
             key={`mmp-${i}`}
             position={[p.lat, p.lng]}
             icon={createSegmentIcon(p.t ?? "drive")}
-          >
-            {(p.t === "park" || p.t === "stop") && (
-              <Tooltip direction="top" offset={[0, -10]} className="pin-tooltip">
-                {p.t === "park" ? "Parking" : "Stop"}
-              </Tooltip>
-            )}
-          </Marker>
+          />
         ))}
       {routeType !== "multi_movement" && !hideWaypointMarkers && waypoints.map((wp, i) => {
         const type =
@@ -508,7 +495,7 @@ export default function RouteMap({
           />
         );
       })}
-      {!hideWaypointMarkers && routeType === "two_route" &&
+      {!hideWaypointMarkers && routeType === "one_way" && exitWaypoints.length > 0 &&
         exitWaypoints.map((wp, i) => {
           const type =
             i === 0 ? "first" : i === exitWaypoints.length - 1 && exitWaypoints.length > 1 ? "last" : "middle";
@@ -537,11 +524,11 @@ export default function RouteMap({
         })}
       {pins.map((p) => (
         <Marker key={p.id} position={[p.lat, p.lng]} icon={createPinIcon(PIN_COLORS[p.label])}>
-          <Tooltip direction="top" offset={[0, -22]} opacity={1} permanent className="pin-tooltip">
+          <Tooltip direction="top" offset={[0, -22]} opacity={1} className="pin-tooltip">
             {p.label}
           </Tooltip>
           {p.note && (
-            <Tooltip direction="bottom" offset={[0, 0]} className="pin-note-tooltip">
+            <Tooltip direction="bottom" offset={[0, 0]} opacity={1} className="pin-note-tooltip">
               {p.note}
             </Tooltip>
           )}
