@@ -726,17 +726,20 @@ function CreatorPage() {
           waypoints={waypoints}
           exitWaypoints={exitWaypoints}
           routeType={routeType}
+          multiMovementPoints={mmPoints}
           activeDirection={drawingLeg === "exit" ? "out" : "in"}
           onAddWaypoint={creatorMode === "draw" && !recording && !editMode ? addWaypoint : undefined}
           onAddPin={creatorMode === "draw" && !recording ? startPinPlacement : undefined}
           pins={pins}
           pinMode={creatorMode === "draw" && mode === "pin"}
           gpsPosition={gpsPos}
+          fitToWaypoints={Boolean(editId) && !gpsFlewRef.current}
           flyTo={flyTarget}
           backgroundRoutes={backgroundRoutes}
           hideWaypointMarkers={recording}
           editMode={editMode}
           editLeg={routeType === "two_route" ? drawingLeg : "entry"}
+          editTool={editTool}
           onMoveWaypoint={handleMoveWaypoint}
           onDeleteWaypoint={handleDeleteWaypoint}
           onInsertWaypoint={handleInsertWaypoint}
@@ -744,6 +747,47 @@ function CreatorPage() {
         <LocationSearch
           onSelect={(lat, lng) => setFlyTarget({ lat, lng, zoom: 17, seq: Date.now() })}
         />
+        <button
+          onClick={() => {
+            if (!gpsPos) return;
+            setFlyTarget({ lat: gpsPos.lat, lng: gpsPos.lng, zoom: 17, seq: Date.now() });
+          }}
+          disabled={!gpsPos}
+          className={`absolute top-3 right-3 z-[1000] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-full shadow-lg backdrop-blur-sm border transition-colors disabled:opacity-40 disabled:pointer-events-none ${
+            gpsPos ? "bg-blue-600 hover:bg-blue-500 text-white border-blue-400" : "bg-navy-950/90 text-navy-400 border-navy-700"
+          }`}
+          title="Center on my location"
+        >
+          <Crosshair className="w-4 h-4" /> Go to My Location
+        </button>
+        {editMode && creatorMode === "draw" && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] flex flex-col items-center gap-1.5">
+            <div className="flex items-center bg-navy-950/95 backdrop-blur-sm border border-navy-700 rounded-full p-0.5 shadow-lg">
+              {([
+                { v: "erase" as const, label: "Erase Waypoint", Icon: Eraser },
+                { v: "add" as const, label: "Add Waypoint", Icon: Plus },
+                { v: "move" as const, label: "Move Waypoint", Icon: Move },
+              ]).map(({ v, label, Icon }) => (
+                <button
+                  key={v}
+                  onClick={() => setEditTool(v)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full transition-colors ${
+                    editTool === v ? "bg-orange-500 text-white" : "text-navy-300 hover:text-white"
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" /> {label}
+                </button>
+              ))}
+            </div>
+            <div className="px-3 py-1 rounded-full bg-navy-950/95 border border-navy-700 text-white text-[11px] font-medium shadow-lg">
+              {editTool === "erase"
+                ? "Click on a waypoint to erase"
+                : editTool === "add"
+                  ? "Click on the route line to add a waypoint"
+                  : "Drag a waypoint to move it"}
+            </div>
+          </div>
+        )}
         {recording && (
           <div className="absolute top-3 right-3 z-[1000] flex items-center gap-2 bg-black/70 backdrop-blur-sm border border-red-500/60 rounded-full px-3 py-1.5 shadow-lg">
             <span className="relative flex h-3 w-3">
