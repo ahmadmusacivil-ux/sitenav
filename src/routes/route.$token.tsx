@@ -163,6 +163,17 @@ function FollowerPage() {
             <Crosshair className="w-4 h-4" />
             Go to My Location
           </button>
+          {showNavigateToStart && (
+            <a
+              href={navigateHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold bg-orange-500 hover:bg-orange-600 text-white rounded-full shadow-xl active:scale-[0.97]"
+            >
+              <Navigation className="w-4 h-4" />
+              Navigate to Start
+            </a>
+          )}
           <button
             onClick={saveToDashboard}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-navy-950/90 hover:bg-navy-900 text-white border border-navy-700 rounded-full shadow-lg backdrop-blur-sm"
@@ -172,17 +183,6 @@ function FollowerPage() {
             {saved ? "Saved" : "Save"}
           </button>
         </div>
-        {showNavigateToStart && (
-          <a
-            href={navigateHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="absolute top-3 left-3 z-[1000] inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold bg-orange-500 hover:bg-orange-600 text-white rounded-full shadow-xl active:scale-[0.97]"
-          >
-            <Navigation className="w-4 h-4" />
-            Navigate to Start
-          </a>
-        )}
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] flex items-center bg-navy-950/90 backdrop-blur-sm border border-navy-700 rounded-full p-0.5 shadow-lg">
           <button
             onClick={() => setDirection("in")}
