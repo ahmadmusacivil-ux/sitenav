@@ -328,7 +328,10 @@ function CreatorPage() {
   };
 
   const handleInsertWaypoint = (leg: "entry" | "exit", afterIndex: number, lat: number, lng: number) => {
-    const newWp: Waypoint = { id: nextId, lat, lng };
+    // Pick up the movement type from the neighbour we're inserting after.
+    const arr = leg === "exit" ? exitWaypoints : waypoints;
+    const tag = arr[afterIndex]?.t ?? movementType;
+    const newWp: Waypoint = { id: nextId, lat, lng, t: tag };
     setNextId((n) => n + 1);
     const updater = (arr: Waypoint[]) => {
       const next = arr.slice();
@@ -469,7 +472,7 @@ function CreatorPage() {
                   ? "Click map to place a pin"
                   : routeType === "one_way"
                     ? `${waypoints.length} in / ${exitWaypoints.length} out${pins.length ? ` • ${pins.length} pin${pins.length !== 1 ? "s" : ""}` : ""}`
-                    : `${mmPoints.length} point${mmPoints.length !== 1 ? "s" : ""}${pins.length ? ` • ${pins.length} pin${pins.length !== 1 ? "s" : ""}` : ""}`}
+                    : `${waypoints.length} point${waypoints.length !== 1 ? "s" : ""}${pins.length ? ` • ${pins.length} pin${pins.length !== 1 ? "s" : ""}` : ""}`}
               </p>
             </div>
           </div>
@@ -518,9 +521,7 @@ function CreatorPage() {
               onClick={undoLastWaypoint}
               disabled={
                 creatorMode !== "draw" ||
-                (routeType === "multi_movement"
-                  ? mmPoints.length === 0
-                  : (drawingLeg === "exit" ? exitWaypoints.length : waypoints.length) === 0)
+                ((routeType === "one_way" && drawingLeg === "exit" ? exitWaypoints.length : waypoints.length) === 0)
               }
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-navy-800 hover:bg-navy-700 text-navy-300 hover:text-white rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               title="Undo last waypoint"
@@ -611,33 +612,34 @@ function CreatorPage() {
             <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
               <button
                 onClick={() => {
-                  if (waypoints.length > 0 || exitWaypoints.length > 0 || mmPoints.length > 0) return;
-                  setRouteType("one_way");
+                  if (waypoints.length > 0 || exitWaypoints.length > 0) return;
+                  setRouteType("two_way");
                 }}
-                disabled={waypoints.length > 0 || exitWaypoints.length > 0 || mmPoints.length > 0}
+                disabled={waypoints.length > 0 || exitWaypoints.length > 0}
                 className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors disabled:opacity-60 ${
-                  routeType === "one_way" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
+                  routeType === "two_way" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
                 }`}
+                title="Same path used for In and Out"
               >
-                One-Way
+                Two-Way
               </button>
               <button
                 onClick={() => {
-                  if (waypoints.length > 0 || exitWaypoints.length > 0 || mmPoints.length > 0) return;
-                  setRouteType("multi_movement");
-                  setActiveSegment("drive");
+                  if (waypoints.length > 0 || exitWaypoints.length > 0) return;
+                  setRouteType("one_way");
                 }}
-                disabled={waypoints.length > 0 || exitWaypoints.length > 0 || mmPoints.length > 0}
+                disabled={waypoints.length > 0 || exitWaypoints.length > 0}
                 className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors disabled:opacity-60 ${
-                  routeType === "multi_movement" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
+                  routeType === "one_way" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
                 }`}
+                title="Separate In and Out paths"
               >
-                Multi-Movement
+                One-Way
               </button>
             </div>
           )}
-          {/* Always-visible movement bar */}
-          {routeType === "one_way" ? (
+          {/* In/Out direction selector — only for One-Way */}
+          {routeType === "one_way" && !editMode && (
             <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
               <button
                 onClick={() => setDrawingLeg("entry")}
@@ -658,7 +660,9 @@ function CreatorPage() {
                 Out
               </button>
             </div>
-          ) : (
+          )}
+          {/* Movement type — always visible while not editing */}
+          {!editMode && (
             <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
               {([
                 { v: "drive" as const, label: "Driving", Icon: Car, color: "bg-orange-500" },
@@ -666,11 +670,11 @@ function CreatorPage() {
               ]).map(({ v, label, Icon, color }) => (
                 <button
                   key={v}
-                  onClick={() => setActiveSegment(v)}
+                  onClick={() => setMovementType(v)}
                   className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
-                    activeSegment === v ? `${color} text-white` : "text-navy-300 hover:text-white"
+                    movementType === v ? `${color} text-white` : "text-navy-300 hover:text-white"
                   }`}
-                  title={`Next click adds a ${label} point`}
+                  title={`New waypoints will be tagged as ${label}`}
                 >
                   <Icon className="w-3.5 h-3.5" /> {label}
                 </button>
@@ -701,11 +705,8 @@ function CreatorPage() {
           waypoints={waypoints}
           exitWaypoints={exitWaypoints}
           routeType={routeType}
-          multiMovementPoints={mmPoints}
           activeDirection={
-            routeType === "multi_movement"
-              ? activeSegment === "walk" ? "out" : "in"
-              : drawingLeg === "exit" ? "out" : "in"
+            routeType === "one_way" && drawingLeg === "exit" ? "out" : "in"
           }
           onAddWaypoint={creatorMode === "draw" && !recording && !editMode ? addWaypoint : undefined}
           onAddPin={creatorMode === "draw" && !recording ? startPinPlacement : undefined}
@@ -717,7 +718,6 @@ function CreatorPage() {
           backgroundRoutes={backgroundRoutes}
           hideWaypointMarkers={recording}
           editMode={editMode}
-          editLeg={routeType === "one_way" ? drawingLeg : "entry"}
           editTool={editTool}
           onMoveWaypoint={handleMoveWaypoint}
           onDeleteWaypoint={handleDeleteWaypoint}
