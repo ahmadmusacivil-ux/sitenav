@@ -400,7 +400,7 @@ function CreatorPage() {
       name: routeName.trim(),
       waypoints: waypointsPayload,
       exit_waypoints:
-        routeType === "two_route"
+        routeType === "one_way"
           ? exitWaypoints.map((w) => ({ lat: w.lat, lng: w.lng }))
           : [],
       route_type: routeType,
@@ -459,8 +459,7 @@ function CreatorPage() {
   const canSave =
     routeType === "multi_movement"
       ? mmPoints.length >= 2
-      : waypoints.length >= 2 &&
-        (routeType === "two_way" || exitWaypoints.length >= 2);
+      : waypoints.length >= 2 || exitWaypoints.length >= 2;
 
   if (loading || !user || loadingRoute) return <div className="h-screen bg-navy-900" />;
 
@@ -482,11 +481,9 @@ function CreatorPage() {
               <p className="text-navy-400 text-xs leading-tight">
                 {mode === "pin"
                   ? "Click map to place a pin"
-                  : routeType === "two_route"
-                    ? `${drawingLeg === "entry" ? "Entry" : "Exit"} leg • ${waypoints.length} in / ${exitWaypoints.length} out${pins.length ? ` • ${pins.length} pin${pins.length !== 1 ? "s" : ""}` : ""}`
-                    : waypoints.length === 0
-                      ? "Click map to add points"
-                      : `${waypoints.length} waypoint${waypoints.length !== 1 ? "s" : ""}${pins.length ? ` • ${pins.length} pin${pins.length !== 1 ? "s" : ""}` : ""}`}
+                  : routeType === "one_way"
+                    ? `${waypoints.length} in / ${exitWaypoints.length} out${pins.length ? ` • ${pins.length} pin${pins.length !== 1 ? "s" : ""}` : ""}`
+                    : `${mmPoints.length} point${mmPoints.length !== 1 ? "s" : ""}${pins.length ? ` • ${pins.length} pin${pins.length !== 1 ? "s" : ""}` : ""}`}
               </p>
             </div>
           </div>
@@ -535,9 +532,9 @@ function CreatorPage() {
               onClick={undoLastWaypoint}
               disabled={
                 creatorMode !== "draw" ||
-                ((routeType === "two_route" && drawingLeg === "exit"
-                  ? exitWaypoints.length
-                  : waypoints.length) === 0)
+                (routeType === "multi_movement"
+                  ? mmPoints.length === 0
+                  : (drawingLeg === "exit" ? exitWaypoints.length : waypoints.length) === 0)
               }
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-navy-800 hover:bg-navy-700 text-navy-300 hover:text-white rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               title="Undo last waypoint"
