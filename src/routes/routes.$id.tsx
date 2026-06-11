@@ -1,8 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Pencil, Navigation } from "lucide-react";
+import { ArrowLeft, Pencil, Navigation, Crosshair } from "lucide-react";
 import { ClientOnlyMap } from "@/components/ClientOnlyMap";
-import { supabase, type SavedRoute } from "@/lib/supabase";
+import { supabase, type SavedRoute, normalizeRouteType } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import type { Pin } from "@/lib/pins";
 import type { SegmentPoint, SegmentType } from "@/lib/supabase";
@@ -18,6 +18,8 @@ function OwnerRouteView() {
   const navigate = useNavigate();
   const [route, setRoute] = useState<SavedRoute | null | "missing">(null);
   const [pos, setPos] = useState<{ lat: number; lng: number } | null>(null);
+  const [followGps, setFollowGps] = useState(false);
+  const [flyTarget, setFlyTarget] = useState<{ lat: number; lng: number; zoom?: number; seq: number } | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) navigate({ to: "/auth" });
@@ -67,18 +69,13 @@ function OwnerRouteView() {
     );
   }
 
+  const routeType = normalizeRouteType(route.route_type);
   const waypoints = (route.waypoints || []).map((w, i) => ({ id: i + 1, lat: w.lat, lng: w.lng }));
   const exitWaypoints = (route.exit_waypoints || []).map((w, i) => ({
     id: waypoints.length + i + 1,
     lat: w.lat,
     lng: w.lng,
   }));
-  const routeType =
-    route.route_type === "two_route"
-      ? "two_route"
-      : route.route_type === "multi_movement"
-        ? "multi_movement"
-        : "two_way";
   const mmPoints: SegmentPoint[] =
     routeType === "multi_movement"
       ? ((route.waypoints || []) as SegmentPoint[]).map((p) => ({
@@ -129,9 +126,24 @@ function OwnerRouteView() {
           multiMovementPoints={mmPoints}
           pins={pins}
           gpsPosition={pos}
-          fitToWaypoints={!pos}
-          followGps
+          fitToWaypoints={!followGps}
+          followGps={followGps}
+          flyTo={flyTarget}
         />
+        <button
+          onClick={() => {
+            if (!pos) return;
+            setFollowGps(true);
+            setFlyTarget({ lat: pos.lat, lng: pos.lng, zoom: 17, seq: Date.now() });
+          }}
+          disabled={!pos}
+          className={`absolute top-3 right-3 z-[1000] inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold rounded-full shadow-lg backdrop-blur-sm border transition-colors disabled:opacity-40 disabled:pointer-events-none ${
+            pos ? "bg-blue-600 hover:bg-blue-500 text-white border-blue-400" : "bg-navy-950/90 text-navy-400 border-navy-700"
+          }`}
+          title="Center on my location"
+        >
+          <Crosshair className="w-4 h-4" /> Go to My Location
+        </button>
       </div>
     </div>
   );
