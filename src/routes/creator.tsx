@@ -108,6 +108,8 @@ function CreatorPage() {
 
   const smoothWaypoints = (pts: Waypoint[]): Waypoint[] => {
     if (pts.length < 3) return pts;
+    // Only remove outliers — never average/modify the saved coordinates so
+    // waypoints stay on their exact GPS positions.
     const filtered: Waypoint[] = [pts[0]];
     for (let i = 1; i < pts.length - 1; i++) {
       const mid = {
@@ -117,13 +119,7 @@ function CreatorPage() {
       if (haversine(mid, pts[i]) <= 10) filtered.push(pts[i]);
     }
     filtered.push(pts[pts.length - 1]);
-    const smoothed: Waypoint[] = filtered.map((p, i, a) => {
-      if (i === 0 || i === a.length - 1) return p;
-      const lat = (a[i - 1].lat + p.lat + a[i + 1].lat) / 3;
-      const lng = (a[i - 1].lng + p.lng + a[i + 1].lng) / 3;
-      return { ...p, lat, lng };
-    });
-    return smoothed;
+    return filtered;
   };
 
   const stopRecording = () => {
@@ -147,7 +143,7 @@ function CreatorPage() {
   const startRecording = () => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
     const leg: "entry" | "exit" =
-      routeType === "two_route" && drawingLeg === "exit" ? "exit" : "entry";
+      routeType === "one_way" && drawingLeg === "exit" ? "exit" : "entry";
     recordLegRef.current = leg;
     if (leg === "exit") setExitWaypoints([]);
     else setWaypoints([]);
