@@ -404,21 +404,25 @@ function CreatorPage() {
       })),
     };
     if (editingId) {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("routes")
         .update(payload)
         .eq("id", editingId)
-        .eq("user_id", user.id);
-      if (error) {
+        .eq("user_id", user.id)
+        .select("id,share_token")
+        .maybeSingle();
+      if (error || !data) {
         setSaveStatus("error");
-        setErrorMsg(error.message);
+        setErrorMsg(error?.message ?? "Update failed — no rows were modified.");
         return;
       }
       setSaveStatus("saved");
-      if (editingShareToken) {
-        setShareUrl(`${window.location.origin}/route/${editingShareToken}`);
-      }
+      const token = data.share_token ?? editingShareToken;
+      if (token) setShareUrl(`${window.location.origin}/route/${token}`);
       setNamePromptOpen(false);
+      // Return to dashboard so the updated route (and any name change) is
+      // immediately visible in "My Routes".
+      navigate({ to: "/dashboard" });
     } else {
       const { data, error } = await supabase
         .from("routes")

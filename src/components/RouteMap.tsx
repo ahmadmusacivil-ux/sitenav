@@ -30,10 +30,14 @@ function createMarkerIcon(
   const base =
     type === "first" ? "route-marker-first" : type === "last" ? "route-marker-last" : "route-marker";
   const className = variant === "exit" ? `${base} route-marker-exit` : base;
+  // iconSize / iconAnchor must match the rendered CSS box, otherwise the
+  // marker is anchored to the corner of a larger invisible box and appears
+  // offset from the polyline. Middle dots are 8x8, first/last are 18x18
+  // (matches src/styles.css `.route-marker*`). Anchors are exact centres.
   return L.divIcon({
     className,
-    iconSize: type === "middle" ? [16, 16] : [20, 20],
-    iconAnchor: type === "middle" ? [8, 8] : [10, 10],
+    iconSize: type === "middle" ? [8, 8] : [18, 18],
+    iconAnchor: type === "middle" ? [4, 4] : [9, 9],
   });
 }
 
