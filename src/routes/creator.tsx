@@ -853,13 +853,6 @@ function CreatorPage() {
             </div>
           </div>
         )}
-        {editMode && creatorMode === "draw" && (
-          <div className="pointer-events-none absolute top-16 left-1/2 -translate-x-1/2 z-[1000]">
-            <div className="px-3 py-1.5 rounded-full bg-orange-500/95 text-white text-xs font-semibold shadow-lg whitespace-nowrap">
-              Drag to move • Tap marker to delete • Tap line to insert
-            </div>
-          </div>
-        )}
         {waypoints.length > 0 && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000] sm:hidden">
             <div className="bg-navy-950/90 backdrop-blur-sm border border-navy-700 rounded-full px-4 py-1.5 flex items-center gap-2 shadow-lg">
