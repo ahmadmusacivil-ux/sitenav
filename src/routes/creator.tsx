@@ -18,8 +18,6 @@ import {
   Wrench,
   Crosshair,
   Footprints,
-  ParkingSquare,
-  Coffee,
   Move,
   Plus,
   Eraser,
@@ -28,7 +26,7 @@ import { ClientOnlyMap } from "@/components/ClientOnlyMap";
 import { type BackgroundRoute } from "@/components/RouteMap";
 import LocationSearch from "@/components/LocationSearch";
 import { useAuth } from "@/lib/auth";
-import { supabase, type RouteType, type SegmentPoint, type SegmentType } from "@/lib/supabase";
+import { supabase, type RouteType, type SegmentPoint, type SegmentType, normalizeRouteType } from "@/lib/supabase";
 import { PIN_LABELS, PIN_COLORS, type Pin, type PinLabel } from "@/lib/pins";
 
 export const Route = createFileRoute("/creator")({
@@ -60,7 +58,7 @@ function CreatorPage() {
   const [activeSegment, setActiveSegment] = useState<SegmentType>("drive");
   const [nextId, setNextId] = useState(1);
   const [pins, setPins] = useState<Pin[]>([]);
-  const [routeType, setRouteType] = useState<RouteType>("two_way");
+  const [routeType, setRouteType] = useState<RouteType>("one_way");
   const [drawingLeg, setDrawingLeg] = useState<"entry" | "exit">("entry");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingShareToken, setEditingShareToken] = useState<string | null>(null);
