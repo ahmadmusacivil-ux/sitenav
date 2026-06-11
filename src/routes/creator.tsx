@@ -582,10 +582,11 @@ function CreatorPage() {
               onClick={() => {
                 if (recording) return;
                 setCreatorMode("draw");
+                setEditMode(false);
               }}
               disabled={recording}
               className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                creatorMode === "draw" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
+                creatorMode === "draw" && !editMode ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
               }`}
               title="Draw mode — tap map to add waypoints"
             >
@@ -596,62 +597,86 @@ function CreatorPage() {
                 if (recording) return;
                 setCreatorMode("record");
                 setMode("waypoint");
+                setEditMode(false);
               }}
               disabled={recording}
               className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                creatorMode === "record" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
+                creatorMode === "record" && !editMode ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
               }`}
               title="Record mode — drive to capture the route"
             >
               <Car className="w-3.5 h-3.5" /> Record
             </button>
-          </div>
-          {(waypoints.length > 0 || exitWaypoints.length > 0) && creatorMode === "draw" && (
             <button
-              onClick={() => setEditMode((v) => !v)}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors ${
-                editMode
-                  ? "bg-orange-500 text-white"
-                  : "bg-navy-800/80 text-navy-300 hover:text-white"
+              onClick={() => {
+                if (recording) return;
+                setEditMode((v) => !v);
+              }}
+              disabled={recording}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                editMode ? "bg-orange-500 text-white" : "text-navy-300 hover:text-white"
               }`}
-              title="Edit route — drag to move, click marker to delete, click line to insert"
+              title="Edit route — drag, click to delete, click line to insert"
             >
-              <Wrench className="w-3.5 h-3.5" /> {editMode ? "Editing" : "Edit Route"}
+              <Wrench className="w-3.5 h-3.5" /> Edit
             </button>
+          </div>
+          {!editingId && (
+            <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
+              <button
+                onClick={() => {
+                  if (waypoints.length > 0 || exitWaypoints.length > 0 || mmPoints.length > 0) return;
+                  setRouteType("one_way");
+                }}
+                disabled={waypoints.length > 0 || exitWaypoints.length > 0 || mmPoints.length > 0}
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors disabled:opacity-60 ${
+                  routeType === "one_way" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
+                }`}
+              >
+                One-Way
+              </button>
+              <button
+                onClick={() => {
+                  if (waypoints.length > 0 || exitWaypoints.length > 0 || mmPoints.length > 0) return;
+                  setRouteType("multi_movement");
+                  setActiveSegment("drive");
+                }}
+                disabled={waypoints.length > 0 || exitWaypoints.length > 0 || mmPoints.length > 0}
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors disabled:opacity-60 ${
+                  routeType === "multi_movement" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
+                }`}
+              >
+                Multi-Movement
+              </button>
+            </div>
           )}
-          <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
-            <button
-              onClick={() => setRouteType("two_way")}
-              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                routeType === "two_way" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
-              }`}
-            >
-              Two-Way Route
-            </button>
-            <button
-              onClick={() => setRouteType("two_route")}
-              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                routeType === "two_route" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
-              }`}
-            >
-              Two-Route
-            </button>
-            <button
-              onClick={() => setRouteType("multi_movement")}
-              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                routeType === "multi_movement" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
-              }`}
-            >
-              Multi-Movement
-            </button>
-          </div>
-          {routeType === "multi_movement" && (
+          {/* Always-visible movement bar */}
+          {routeType === "one_way" ? (
+            <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
+              <button
+                onClick={() => setDrawingLeg("entry")}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
+                  drawingLeg === "entry" ? "bg-orange-500 text-white" : "text-navy-300 hover:text-white"
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-orange-500 border border-white/60" />
+                In
+              </button>
+              <button
+                onClick={() => setDrawingLeg("exit")}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
+                  drawingLeg === "exit" ? "bg-blue-500 text-white" : "text-navy-300 hover:text-white"
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-blue-500 border border-white/60" />
+                Out
+              </button>
+            </div>
+          ) : (
             <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
               {([
-                { v: "drive" as const, label: "Drive", Icon: Car, color: "bg-orange-500" },
-                { v: "walk" as const, label: "Walk", Icon: Footprints, color: "bg-green-500" },
-                { v: "park" as const, label: "Park", Icon: ParkingSquare, color: "bg-purple-500" },
-                { v: "stop" as const, label: "Stop", Icon: Coffee, color: "bg-yellow-500" },
+                { v: "drive" as const, label: "Driving", Icon: Car, color: "bg-orange-500" },
+                { v: "walk" as const, label: "Walking", Icon: Footprints, color: "bg-green-500" },
               ]).map(({ v, label, Icon, color }) => (
                 <button
                   key={v}
@@ -664,28 +689,6 @@ function CreatorPage() {
                   <Icon className="w-3.5 h-3.5" /> {label}
                 </button>
               ))}
-            </div>
-          )}
-          {routeType === "two_route" && (
-            <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
-              <button
-                onClick={() => setDrawingLeg("entry")}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
-                  drawingLeg === "entry" ? "bg-orange-500 text-white" : "text-navy-300 hover:text-white"
-                }`}
-              >
-                <span className="w-2 h-2 rounded-full bg-orange-500 border border-white/60" />
-                Entry
-              </button>
-              <button
-                onClick={() => setDrawingLeg("exit")}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
-                  drawingLeg === "exit" ? "bg-blue-500 text-white" : "text-navy-300 hover:text-white"
-                }`}
-              >
-                <span className="w-2 h-2 rounded-full bg-blue-500 border border-white/60" />
-                Exit
-              </button>
             </div>
           )}
         </div>
@@ -713,7 +716,11 @@ function CreatorPage() {
           exitWaypoints={exitWaypoints}
           routeType={routeType}
           multiMovementPoints={mmPoints}
-          activeDirection={drawingLeg === "exit" ? "out" : "in"}
+          activeDirection={
+            routeType === "multi_movement"
+              ? activeSegment === "walk" ? "out" : "in"
+              : drawingLeg === "exit" ? "out" : "in"
+          }
           onAddWaypoint={creatorMode === "draw" && !recording && !editMode ? addWaypoint : undefined}
           onAddPin={creatorMode === "draw" && !recording ? startPinPlacement : undefined}
           pins={pins}
@@ -724,7 +731,7 @@ function CreatorPage() {
           backgroundRoutes={backgroundRoutes}
           hideWaypointMarkers={recording}
           editMode={editMode}
-          editLeg={routeType === "two_route" ? drawingLeg : "entry"}
+          editLeg={routeType === "one_way" ? drawingLeg : "entry"}
           editTool={editTool}
           onMoveWaypoint={handleMoveWaypoint}
           onDeleteWaypoint={handleDeleteWaypoint}
@@ -746,7 +753,7 @@ function CreatorPage() {
         >
           <Crosshair className="w-4 h-4" /> Go to My Location
         </button>
-        {editMode && creatorMode === "draw" && (
+        {editMode && (
           <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] flex flex-col items-center gap-1.5">
             <div className="flex items-center bg-navy-950/95 backdrop-blur-sm border border-navy-700 rounded-full p-0.5 shadow-lg">
               {([
@@ -794,7 +801,7 @@ function CreatorPage() {
             >
               <Play className="w-5 h-5 fill-white" />
               Start Recording
-              {routeType === "two_route" && (
+              {routeType === "one_way" && (
                 <span className="ml-1 text-xs font-normal opacity-90">
                   ({drawingLeg === "exit" ? "Exit" : "Entry"})
                 </span>
