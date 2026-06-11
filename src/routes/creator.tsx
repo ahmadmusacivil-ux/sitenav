@@ -650,7 +650,36 @@ function CreatorPage() {
             >
               Two-Route
             </button>
+            <button
+              onClick={() => setRouteType("multi_movement")}
+              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                routeType === "multi_movement" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
+              }`}
+            >
+              Multi-Movement
+            </button>
           </div>
+          {routeType === "multi_movement" && (
+            <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
+              {([
+                { v: "drive" as const, label: "Drive", Icon: Car, color: "bg-orange-500" },
+                { v: "walk" as const, label: "Walk", Icon: Footprints, color: "bg-green-500" },
+                { v: "park" as const, label: "Park", Icon: ParkingSquare, color: "bg-purple-500" },
+                { v: "stop" as const, label: "Stop", Icon: Coffee, color: "bg-yellow-500" },
+              ]).map(({ v, label, Icon, color }) => (
+                <button
+                  key={v}
+                  onClick={() => setActiveSegment(v)}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
+                    activeSegment === v ? `${color} text-white` : "text-navy-300 hover:text-white"
+                  }`}
+                  title={`Next click adds a ${label} point`}
+                >
+                  <Icon className="w-3.5 h-3.5" /> {label}
+                </button>
+              ))}
+            </div>
+          )}
           {routeType === "two_route" && (
             <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
               <button
