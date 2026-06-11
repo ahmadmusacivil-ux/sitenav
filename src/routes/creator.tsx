@@ -206,7 +206,7 @@ function CreatorPage() {
           name: string;
           waypoints: { lat: number; lng: number }[] | null;
           exit_waypoints: { lat: number; lng: number }[] | null;
-          route_type: "two_way" | "two_route" | null;
+          route_type: string | null;
         }[];
         const bg: BackgroundRoute[] = rows
           .filter((r) => r.id !== editId)
@@ -215,7 +215,7 @@ function CreatorPage() {
             name: r.name,
             entry: (r.waypoints ?? []).map((w) => [w.lat, w.lng] as [number, number]),
             exit: (r.exit_waypoints ?? []).map((w) => [w.lat, w.lng] as [number, number]),
-            routeType: r.route_type ?? "two_way",
+            routeType: normalizeRouteType(r.route_type),
           }))
           .filter((r) => r.entry.length > 1);
         setBackgroundRoutes(bg);
@@ -262,7 +262,7 @@ function CreatorPage() {
               name: string;
               waypoints: { lat: number; lng: number }[];
               exit_waypoints: { lat: number; lng: number }[] | null;
-              route_type: RouteType | null;
+              route_type: string | null;
               pins: Pin[] | null;
               share_token: string;
             }
@@ -274,12 +274,7 @@ function CreatorPage() {
             lat: w.lat,
             lng: w.lng,
           }));
-          const rt: RouteType =
-            r.route_type === "two_route"
-              ? "two_route"
-              : r.route_type === "multi_movement"
-                ? "multi_movement"
-                : "two_way";
+          const rt: RouteType = normalizeRouteType(r.route_type);
           setRouteType(rt);
           if (rt === "multi_movement") {
             const raw = (r.waypoints || []) as SegmentPoint[];
@@ -308,7 +303,7 @@ function CreatorPage() {
       setMmPoints((p) => [...p, { lat, lng, t: activeSegment }]);
       return;
     }
-    if (routeType === "two_route" && drawingLeg === "exit") {
+    if (drawingLeg === "exit") {
       setExitWaypoints((p) => [...p, { id: nextId, lat, lng }]);
     } else {
       setWaypoints((p) => [...p, { id: nextId, lat, lng }]);
@@ -321,7 +316,7 @@ function CreatorPage() {
       setMmPoints((p) => p.slice(0, -1));
       return;
     }
-    if (routeType === "two_route" && drawingLeg === "exit") {
+    if (drawingLeg === "exit") {
       setExitWaypoints((p) => p.slice(0, -1));
     } else {
       setWaypoints((p) => p.slice(0, -1));
