@@ -4,7 +4,7 @@ import { Navigation, MapPin, Crosshair, Bookmark, BookmarkCheck } from "lucide-r
 import { ClientOnlyMap } from "@/components/ClientOnlyMap";
 import { supabase, type SavedRoute, normalizeRouteType } from "@/lib/supabase";
 import { distanceMeters, PIN_COLORS, type Pin } from "@/lib/pins";
-import type { SegmentPoint, SegmentType } from "@/lib/supabase";
+import type { SegmentType } from "@/lib/supabase";
 
 export const Route = createFileRoute("/route/$token")({
   head: () => ({ meta: [{ title: "Follow Route — SiteNav" }] }),
@@ -97,34 +97,28 @@ function FollowerPage() {
   }
 
   const routeType = normalizeRouteType(route.route_type);
-  const waypoints = (route.waypoints || []).map((w, i) => ({ id: i + 1, lat: w.lat, lng: w.lng }));
+  const waypoints = (route.waypoints || []).map((w, i) => ({
+    id: i + 1,
+    lat: w.lat,
+    lng: w.lng,
+    t: ((w as { t?: SegmentType }).t === "walk" ? "walk" : "drive") as SegmentType,
+  }));
   const exitWaypoints = (route.exit_waypoints || []).map((w, i) => ({
     id: waypoints.length + i + 1,
     lat: w.lat,
     lng: w.lng,
+    t: ((w as { t?: SegmentType }).t === "walk" ? "walk" : "drive") as SegmentType,
   }));
-  const mmPoints: SegmentPoint[] =
-    routeType === "multi_movement"
-      ? ((route.waypoints || []) as SegmentPoint[]).map((p) => ({
-          lat: p.lat,
-          lng: p.lng,
-          t: ((p as { t?: SegmentType }).t ?? "drive") as SegmentType,
-        }))
-      : [];
   const pins: Pin[] = (route.pins || []).filter((p): p is Pin => !!p && typeof p.lat === "number");
-  // For multi_movement, filter pins by direction (drive=in vs walk=out) is N/A; pins are shared.
-  const visibleMmPoints =
-    routeType === "multi_movement"
-      ? mmPoints.filter((p) => (direction === "out" ? p.t === "walk" : (p.t ?? "drive") === "drive"))
-      : mmPoints;
+  // One-Way: show only the active direction's leg.
+  // Two-Way: always show the single drawn path.
   const visibleWaypoints =
-    routeType === "one_way"
-      ? direction === "out" && exitWaypoints.length > 0 ? [] : waypoints
+    routeType === "one_way" && direction === "out" && exitWaypoints.length > 0
+      ? []
       : waypoints;
   const visibleExitWaypoints =
-    routeType === "one_way" ? (direction === "in" ? [] : exitWaypoints) : [];
-  const startPoint =
-    routeType === "multi_movement" ? (visibleMmPoints[0] ?? mmPoints[0]) : (visibleWaypoints[0] ?? waypoints[0]);
+    routeType === "one_way" && direction === "out" ? exitWaypoints : [];
+  const startPoint = visibleWaypoints[0] ?? visibleExitWaypoints[0] ?? waypoints[0];
   const distanceToStart = pos && startPoint ? distanceMeters(pos, { lat: startPoint.lat, lng: startPoint.lng }) : null;
   const showNavigateToStart = startPoint && (distanceToStart === null || distanceToStart > 100);
   const navigateHref = startPoint
@@ -161,7 +155,6 @@ function FollowerPage() {
           waypoints={visibleWaypoints}
           exitWaypoints={visibleExitWaypoints}
           routeType={routeType}
-          multiMovementPoints={visibleMmPoints}
           activeDirection={direction}
           pins={pins}
           gpsPosition={pos}

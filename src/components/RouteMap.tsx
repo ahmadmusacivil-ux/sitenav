@@ -3,25 +3,25 @@ import { MapContainer, TileLayer, Marker, Polyline, Tooltip, useMap, useMapEvent
 import L from "leaflet";
 import "leaflet-polylinedecorator";
 import { type Pin, PIN_COLORS } from "@/lib/pins";
-import { type SegmentPoint, type SegmentType } from "@/lib/supabase";
+import { type SegmentType, type RouteType } from "@/lib/supabase";
 
-interface Waypoint {
+export interface Waypoint {
   id: number;
   lat: number;
   lng: number;
+  t?: SegmentType; // "drive" | "walk"
 }
 
 const ENTRY_COLOR = "#f97316";
 const EXIT_COLOR = "#ef4444";
 const REVERSE_COLOR = "#3b82f6";
 const BG_COLOR = "#3b82f6";
+const WALK_COLOR = "#22c55e"; // green for walk segments (both legs)
 
-const SEGMENT_COLORS: Record<SegmentType, string> = {
-  drive: "#f97316",
-  walk: "#22c55e",
-  park: "#a855f7",
-  stop: "#eab308",
-};
+function segmentColor(t: SegmentType | undefined, leg: "entry" | "exit"): string {
+  if (t === "walk") return WALK_COLOR;
+  return leg === "exit" ? REVERSE_COLOR : ENTRY_COLOR;
+}
 
 function createMarkerIcon(
   type: "first" | "last" | "middle",
@@ -52,25 +52,6 @@ function createPinIcon(color: string) {
     html: `<span class="pin-dot" style="background:${color}"></span>`,
     iconSize: [22, 28],
     iconAnchor: [11, 26],
-  });
-}
-
-function createSegmentIcon(t: SegmentType) {
-  const color = SEGMENT_COLORS[t];
-  const letter = t === "park" ? "P" : t === "stop" ? "S" : "";
-  if (letter) {
-    return L.divIcon({
-      className: "segment-marker",
-      html: `<span class="segment-badge" style="background:${color}">${letter}</span>`,
-      iconSize: [22, 22],
-      iconAnchor: [11, 11],
-    });
-  }
-  return L.divIcon({
-    className: "segment-marker",
-    html: `<span class="segment-dot" style="background:${color}"></span>`,
-    iconSize: [12, 12],
-    iconAnchor: [6, 6],
   });
 }
 
@@ -196,7 +177,7 @@ export type BackgroundRoute = {
   name?: string;
   entry: [number, number][];
   exit?: [number, number][];
-  routeType?: "one_way" | "multi_movement";
+  routeType?: RouteType;
 };
 
 function routeBounds(r: BackgroundRoute) {
@@ -280,8 +261,7 @@ function BackgroundRoutes({ routes }: { routes: BackgroundRoute[] }) {
 export type RouteMapProps = {
   waypoints: Waypoint[];
   exitWaypoints?: Waypoint[];
-  routeType?: "one_way" | "multi_movement";
-  multiMovementPoints?: SegmentPoint[];
+  routeType?: RouteType;
   activeDirection?: "in" | "out";
   onAddWaypoint?: (lat: number, lng: number) => void;
   onAddPin?: (lat: number, lng: number) => void;
@@ -294,7 +274,6 @@ export type RouteMapProps = {
   backgroundRoutes?: BackgroundRoute[];
   hideWaypointMarkers?: boolean;
   editMode?: boolean;
-  editLeg?: "entry" | "exit";
   editTool?: "move" | "erase" | "add";
   onMoveWaypoint?: (leg: "entry" | "exit", id: number, lat: number, lng: number) => void;
   onDeleteWaypoint?: (leg: "entry" | "exit", id: number) => void;
@@ -304,8 +283,7 @@ export type RouteMapProps = {
 export default function RouteMap({
   waypoints,
   exitWaypoints = [],
-  routeType = "one_way",
-  multiMovementPoints = [],
+  routeType = "two_way",
   activeDirection = "in",
   onAddWaypoint,
   onAddPin,
@@ -318,7 +296,6 @@ export default function RouteMap({
   backgroundRoutes,
   hideWaypointMarkers = false,
   editMode = false,
-  editLeg = "entry",
   editTool = "move",
   onMoveWaypoint,
   onDeleteWaypoint,
@@ -335,38 +312,31 @@ export default function RouteMap({
   );
   const entryRaw = waypoints.map((w) => [w.lat, w.lng] as [number, number]);
   const exitRaw = exitWaypoints.map((w) => [w.lat, w.lng] as [number, number]);
-  const entryLine = smoothPath(entryRaw);
-  const exitLine = smoothPath(exitRaw);
-  // For multi_movement, filter visible segments by direction: in=drive, out=walk.
-  const mmFiltered = multiMovementPoints.filter((p) => {
-    if (routeType !== "multi_movement") return true;
-    const t = p.t ?? "drive";
-    return activeDirection === "out" ? t === "walk" : t === "drive";
-  });
-  const mmRaw = mmFiltered.map((p) => [p.lat, p.lng] as [number, number]);
-  const rawPoints =
-    routeType === "multi_movement" ? mmRaw : [...entryRaw, ...exitRaw];
+  const rawPoints = [...entryRaw, ...exitRaw];
   const clickable = Boolean(onAddWaypoint || onAddPin);
   const dim = 0.3;
   const bright = 0.95;
 
-  // Build connected segments for multi_movement from the filtered list.
-  type MMSeg = { type: SegmentType; pts: [number, number][] };
-  const mmSegments: MMSeg[] = [];
-  if (routeType === "multi_movement" && mmFiltered.length > 1) {
-    let cur: MMSeg | null = null;
-    for (let i = 1; i < mmFiltered.length; i++) {
-      const prev = mmFiltered[i - 1];
-      const p = mmFiltered[i];
-      const t: SegmentType = p.t === "walk" ? "walk" : "drive";
+  // Build connected sub-polylines by movement type (`t`). Segment i covers the
+  // line from waypoint[i-1] → waypoint[i] and adopts waypoint[i]'s `t`.
+  type LegSeg = { type: SegmentType; pts: [number, number][] };
+  function buildLegSegments(wps: Waypoint[]): LegSeg[] {
+    const out: LegSeg[] = [];
+    if (wps.length < 2) return out;
+    let cur: LegSeg | null = null;
+    for (let i = 1; i < wps.length; i++) {
+      const t: SegmentType = wps[i].t === "walk" ? "walk" : "drive";
       if (!cur || cur.type !== t) {
-        cur = { type: t, pts: [[prev.lat, prev.lng], [p.lat, p.lng]] };
-        mmSegments.push(cur);
+        cur = { type: t, pts: [[wps[i - 1].lat, wps[i - 1].lng], [wps[i].lat, wps[i].lng]] };
+        out.push(cur);
       } else {
-        cur.pts.push([p.lat, p.lng]);
+        cur.pts.push([wps[i].lat, wps[i].lng]);
       }
     }
+    return out;
   }
+  const entrySegs = buildLegSegments(waypoints);
+  const exitSegs = buildLegSegments(exitWaypoints);
 
   const insertOnLine = (leg: "entry" | "exit", raw: [number, number][], e: L.LeafletMouseEvent) => {
     if (!onInsertWaypoint || raw.length < 2) return;
@@ -405,71 +375,62 @@ export default function RouteMap({
       {backgroundRoutes && backgroundRoutes.length > 0 && (
         <BackgroundRoutes routes={backgroundRoutes} />
       )}
-      {routeType !== "multi_movement" && entryLine.length > 1 && (
-        <Polyline
-          positions={entryLine}
-          pathOptions={{ color: ENTRY_COLOR, weight: 3, opacity: 0.9, lineCap: "round", lineJoin: "round" }}
-          eventHandlers={
-            editMode && editLeg === "entry" && editTool === "add"
-              ? { click: (e) => insertOnLine("entry", entryRaw, e) }
-              : undefined
-          }
-        />
-      )}
-      {routeType !== "multi_movement" && entryLine.length > 1 && (
-        <DirectionArrows
-          points={entryLine}
-          color={ENTRY_COLOR}
-          opacity={activeDirection === "in" ? bright : dim}
-          reverse={false}
-        />
-      )}
-      {routeType === "one_way" && exitLine.length > 1 && (
-        <>
-          <Polyline
-            positions={exitLine}
-            pathOptions={{ color: REVERSE_COLOR, weight: 3, opacity: 0.9, lineCap: "round", lineJoin: "round" }}
-            eventHandlers={
-              editMode && editLeg === "exit" && editTool === "add"
-                ? { click: (e) => insertOnLine("exit", exitRaw, e) }
-                : undefined
-            }
-          />
-          <DirectionArrows
-            points={exitLine}
-            color={REVERSE_COLOR}
-            opacity={activeDirection === "out" ? bright : dim}
-            reverse={false}
-          />
-        </>
-      )}
-      {routeType === "multi_movement" && mmSegments.map((s, idx) => {
-        const sm = smoothPath(s.pts);
+      {/* Entry leg sub-polylines, coloured per movement type. */}
+      {entrySegs.map((s, idx) => {
+        const color = segmentColor(s.type, "entry");
         return (
-          <Fragment key={`mm-${idx}`}>
+          <Fragment key={`entry-${idx}`}>
             <Polyline
-              positions={sm}
-              pathOptions={{
-                color: SEGMENT_COLORS[s.type],
-                weight: 4,
-                opacity: 0.95,
-                lineCap: "round",
-                lineJoin: "round",
-              }}
+              positions={s.pts}
+              pathOptions={{ color, weight: 4, opacity: 0.95, lineCap: "round", lineJoin: "round" }}
+              eventHandlers={
+                editMode && editTool === "add"
+                  ? { click: (e) => insertOnLine("entry", entryRaw, e) }
+                  : undefined
+              }
             />
-            <DirectionArrows points={sm} color={SEGMENT_COLORS[s.type]} opacity={0.95} reverse={false} />
+            <DirectionArrows
+              points={s.pts}
+              color={color}
+              opacity={activeDirection === "in" ? bright : dim}
+              reverse={false}
+            />
+            {/* Two-Way: also show reverse-direction arrows in blue on the same path. */}
+            {routeType === "two_way" && (
+              <DirectionArrows
+                points={s.pts}
+                color={REVERSE_COLOR}
+                opacity={activeDirection === "out" ? bright : dim}
+                reverse={true}
+              />
+            )}
           </Fragment>
         );
       })}
-      {routeType === "multi_movement" && !hideWaypointMarkers &&
-        mmFiltered.map((p, i) => (
-          <Marker
-            key={`mmp-${i}`}
-            position={[p.lat, p.lng]}
-            icon={createSegmentIcon(p.t ?? "drive")}
-          />
-        ))}
-      {routeType !== "multi_movement" && !hideWaypointMarkers && waypoints.map((wp, i) => {
+      {/* Exit leg (only meaningful for one_way). */}
+      {routeType === "one_way" && exitSegs.map((s, idx) => {
+        const color = segmentColor(s.type, "exit");
+        return (
+          <Fragment key={`exit-${idx}`}>
+            <Polyline
+              positions={s.pts}
+              pathOptions={{ color, weight: 4, opacity: 0.95, lineCap: "round", lineJoin: "round" }}
+              eventHandlers={
+                editMode && editTool === "add"
+                  ? { click: (e) => insertOnLine("exit", exitRaw, e) }
+                  : undefined
+              }
+            />
+            <DirectionArrows
+              points={s.pts}
+              color={color}
+              opacity={activeDirection === "out" ? bright : dim}
+              reverse={false}
+            />
+          </Fragment>
+        );
+      })}
+      {!hideWaypointMarkers && waypoints.map((wp, i) => {
         const type =
           i === 0 ? "first" : i === waypoints.length - 1 && waypoints.length > 1 ? "last" : "middle";
         return (
@@ -477,9 +438,9 @@ export default function RouteMap({
             key={wp.id}
             position={[wp.lat, wp.lng]}
             icon={createMarkerIcon(type)}
-            draggable={editMode && editLeg === "entry" && editTool === "move"}
+            draggable={editMode && editTool === "move"}
             eventHandlers={
-              editMode && editLeg === "entry"
+              editMode
                 ? {
                     click: () => {
                       if (editTool === "erase") onDeleteWaypoint?.("entry", wp.id);
@@ -504,9 +465,9 @@ export default function RouteMap({
               key={`exit-${wp.id}`}
               position={[wp.lat, wp.lng]}
               icon={createMarkerIcon(type, "exit")}
-              draggable={editMode && editLeg === "exit" && editTool === "move"}
+              draggable={editMode && editTool === "move"}
               eventHandlers={
-                editMode && editLeg === "exit"
+                editMode
                   ? {
                       click: () => {
                         if (editTool === "erase") onDeleteWaypoint?.("exit", wp.id);
@@ -524,7 +485,7 @@ export default function RouteMap({
         })}
       {pins.map((p) => (
         <Marker key={p.id} position={[p.lat, p.lng]} icon={createPinIcon(PIN_COLORS[p.label])}>
-          <Tooltip direction="top" offset={[0, -22]} opacity={1} className="pin-tooltip">
+          <Tooltip permanent direction="top" offset={[0, -22]} opacity={1} className="pin-tooltip">
             {p.label}
           </Tooltip>
           {p.note && (

@@ -14,24 +14,33 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
 import type { Pin } from "./pins";
 
-export type RouteType = "one_way" | "multi_movement";
-// Legacy types from DB that need coercion: "two_way" | "two_route".
-export type StoredRouteType = RouteType | "two_way" | "two_route";
+// Two route types:
+//   two_way — one drawn path, used in both directions (In + Out arrows on the
+//             same line).
+//   one_way — entry and exit are two separate paths.
+export type RouteType = "two_way" | "one_way";
+// Legacy stored values needing coercion: "multi_movement", "two_route".
+export type StoredRouteType = RouteType | "multi_movement" | "two_route";
 
 export function normalizeRouteType(t: string | null | undefined): RouteType {
-  return t === "multi_movement" ? "multi_movement" : "one_way";
+  if (t === "one_way" || t === "two_route") return "one_way";
+  // "two_way", "multi_movement", null/undefined, and anything else → two_way.
+  return "two_way";
 }
 
-export type SegmentType = "drive" | "walk" | "park" | "stop";
+// Per-waypoint movement type. Stored on every waypoint going forward.
+export type SegmentType = "drive" | "walk";
 
 export type SegmentPoint = { lat: number; lng: number; t?: SegmentType };
+
+export type StoredWaypoint = { lat: number; lng: number; t?: SegmentType };
 
 export type SavedRoute = {
   id: string;
   user_id: string;
   name: string;
-  waypoints: { lat: number; lng: number }[];
-  exit_waypoints?: { lat: number; lng: number }[] | null;
+  waypoints: StoredWaypoint[];
+  exit_waypoints?: StoredWaypoint[] | null;
   route_type?: RouteType | null;
   pins?: Pin[] | null;
   share_token: string;

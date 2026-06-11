@@ -5,7 +5,7 @@ import { ClientOnlyMap } from "@/components/ClientOnlyMap";
 import { supabase, type SavedRoute, normalizeRouteType } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import type { Pin } from "@/lib/pins";
-import type { SegmentPoint, SegmentType } from "@/lib/supabase";
+import type { SegmentType } from "@/lib/supabase";
 
 export const Route = createFileRoute("/routes/$id")({
   head: () => ({ meta: [{ title: "Route — SiteNav" }] }),
@@ -70,20 +70,18 @@ function OwnerRouteView() {
   }
 
   const routeType = normalizeRouteType(route.route_type);
-  const waypoints = (route.waypoints || []).map((w, i) => ({ id: i + 1, lat: w.lat, lng: w.lng }));
+  const waypoints = (route.waypoints || []).map((w, i) => ({
+    id: i + 1,
+    lat: w.lat,
+    lng: w.lng,
+    t: ((w as { t?: SegmentType }).t === "walk" ? "walk" : "drive") as SegmentType,
+  }));
   const exitWaypoints = (route.exit_waypoints || []).map((w, i) => ({
     id: waypoints.length + i + 1,
     lat: w.lat,
     lng: w.lng,
+    t: ((w as { t?: SegmentType }).t === "walk" ? "walk" : "drive") as SegmentType,
   }));
-  const mmPoints: SegmentPoint[] =
-    routeType === "multi_movement"
-      ? ((route.waypoints || []) as SegmentPoint[]).map((p) => ({
-          lat: p.lat,
-          lng: p.lng,
-          t: ((p as { t?: SegmentType }).t ?? "drive") as SegmentType,
-        }))
-      : [];
   const pins: Pin[] = (route.pins || []).filter((p): p is Pin => !!p && typeof p.lat === "number");
 
   return (
@@ -123,7 +121,6 @@ function OwnerRouteView() {
           waypoints={waypoints}
           exitWaypoints={exitWaypoints}
           routeType={routeType}
-          multiMovementPoints={mmPoints}
           pins={pins}
           gpsPosition={pos}
           fitToWaypoints={!followGps}
