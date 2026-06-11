@@ -14,7 +14,13 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
 import type { Pin } from "./pins";
 
-export type RouteType = "two_way" | "two_route" | "multi_movement";
+export type RouteType = "one_way" | "multi_movement";
+// Legacy types from DB that need coercion: "two_way" | "two_route".
+export type StoredRouteType = RouteType | "two_way" | "two_route";
+
+export function normalizeRouteType(t: string | null | undefined): RouteType {
+  return t === "multi_movement" ? "multi_movement" : "one_way";
+}
 
 export type SegmentType = "drive" | "walk" | "park" | "stop";
 
