@@ -290,3 +290,25 @@
   white-space: nowrap !important;
 }
 .bg-route-tooltip::before { display: none !important; }
+
+.segment-marker { position: relative; }
+.segment-marker .segment-dot {
+  position: absolute; inset: 0; margin: auto;
+  width: 10px; height: 10px; border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.35);
+  display: block;
+}
+.segment-marker .segment-badge {
+  position: absolute; inset: 0; margin: auto;
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}

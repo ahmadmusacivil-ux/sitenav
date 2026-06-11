@@ -5,6 +5,7 @@ import { ClientOnlyMap } from "@/components/ClientOnlyMap";
 import { supabase, type SavedRoute } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import type { Pin } from "@/lib/pins";
+import type { SegmentPoint, SegmentType } from "@/lib/supabase";
 
 export const Route = createFileRoute("/routes/$id")({
   head: () => ({ meta: [{ title: "Route — SiteNav" }] }),
@@ -72,7 +73,20 @@ function OwnerRouteView() {
     lat: w.lat,
     lng: w.lng,
   }));
-  const routeType = route.route_type === "two_route" ? "two_route" : "two_way";
+  const routeType =
+    route.route_type === "two_route"
+      ? "two_route"
+      : route.route_type === "multi_movement"
+        ? "multi_movement"
+        : "two_way";
+  const mmPoints: SegmentPoint[] =
+    routeType === "multi_movement"
+      ? ((route.waypoints || []) as SegmentPoint[]).map((p) => ({
+          lat: p.lat,
+          lng: p.lng,
+          t: ((p as { t?: SegmentType }).t ?? "drive") as SegmentType,
+        }))
+      : [];
   const pins: Pin[] = (route.pins || []).filter((p): p is Pin => !!p && typeof p.lat === "number");
 
   return (
@@ -112,6 +126,7 @@ function OwnerRouteView() {
           waypoints={waypoints}
           exitWaypoints={exitWaypoints}
           routeType={routeType}
+          multiMovementPoints={mmPoints}
           pins={pins}
           gpsPosition={pos}
           fitToWaypoints={!pos}

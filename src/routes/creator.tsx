@@ -16,12 +16,19 @@ import {
   RotateCcw,
   Undo2,
   Wrench,
+  Crosshair,
+  Footprints,
+  ParkingSquare,
+  Coffee,
+  Move,
+  Plus,
+  Eraser,
 } from "lucide-react";
 import { ClientOnlyMap } from "@/components/ClientOnlyMap";
 import { type BackgroundRoute } from "@/components/RouteMap";
 import LocationSearch from "@/components/LocationSearch";
 import { useAuth } from "@/lib/auth";
-import { supabase, type RouteType } from "@/lib/supabase";
+import { supabase, type RouteType, type SegmentPoint, type SegmentType } from "@/lib/supabase";
 import { PIN_LABELS, PIN_COLORS, type Pin, type PinLabel } from "@/lib/pins";
 
 export const Route = createFileRoute("/creator")({
@@ -49,6 +56,8 @@ function CreatorPage() {
   const { edit: editId } = Route.useSearch();
   const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
   const [exitWaypoints, setExitWaypoints] = useState<Waypoint[]>([]);
+  const [mmPoints, setMmPoints] = useState<SegmentPoint[]>([]);
+  const [activeSegment, setActiveSegment] = useState<SegmentType>("drive");
   const [nextId, setNextId] = useState(1);
   const [pins, setPins] = useState<Pin[]>([]);
   const [routeType, setRouteType] = useState<RouteType>("two_way");
@@ -75,6 +84,7 @@ function CreatorPage() {
   const [creatorMode, setCreatorMode] = useState<"draw" | "record">("draw");
   const [recording, setRecording] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [editTool, setEditTool] = useState<"move" | "erase" | "add">("move");
   const [recordSummary, setRecordSummary] = useState<{ points: number; meters: number; leg: "entry" | "exit" } | null>(null);
   const recordWatchRef = useRef<number | null>(null);
   const recordLegRef = useRef<"entry" | "exit">("entry");
@@ -270,10 +280,23 @@ function CreatorPage() {
             lat: w.lat,
             lng: w.lng,
           }));
-          setWaypoints(wps);
-          setExitWaypoints(exits);
+          const rt: RouteType =
+            r.route_type === "two_route"
+              ? "two_route"
+              : r.route_type === "multi_movement"
+                ? "multi_movement"
+                : "two_way";
+          setRouteType(rt);
+          if (rt === "multi_movement") {
+            const raw = (r.waypoints || []) as SegmentPoint[];
+            setMmPoints(
+              raw.map((p) => ({ lat: p.lat, lng: p.lng, t: (p.t as SegmentType) ?? "drive" })),
+            );
+          } else {
+            setWaypoints(wps);
+            setExitWaypoints(exits);
+          }
           setNextId(wps.length + exits.length + 1);
-          setRouteType(r.route_type === "two_route" ? "two_route" : "two_way");
           setPins(
             (r.pins || []).filter((p): p is Pin => !!p && typeof p.lat === "number"),
           );
@@ -287,6 +310,10 @@ function CreatorPage() {
 
   const addWaypoint = (lat: number, lng: number) => {
     if (editMode) return;
+    if (routeType === "multi_movement") {
+      setMmPoints((p) => [...p, { lat, lng, t: activeSegment }]);
+      return;
+    }
     if (routeType === "two_route" && drawingLeg === "exit") {
       setExitWaypoints((p) => [...p, { id: nextId, lat, lng }]);
     } else {
@@ -296,6 +323,10 @@ function CreatorPage() {
   };
 
   const undoLastWaypoint = () => {
+    if (routeType === "multi_movement") {
+      setMmPoints((p) => p.slice(0, -1));
+      return;
+    }
     if (routeType === "two_route" && drawingLeg === "exit") {
       setExitWaypoints((p) => p.slice(0, -1));
     } else {
@@ -354,6 +385,7 @@ function CreatorPage() {
   const handleClear = () => {
     setWaypoints([]);
     setExitWaypoints([]);
+    setMmPoints([]);
     setNextId(1);
     setPins([]);
     setSaveStatus("idle");
@@ -371,9 +403,13 @@ function CreatorPage() {
     if (!user || !canSave || !routeName.trim()) return;
     setSaveStatus("saving");
     setErrorMsg(null);
+    const waypointsPayload =
+      routeType === "multi_movement"
+        ? mmPoints.map((p) => ({ lat: p.lat, lng: p.lng, t: p.t ?? "drive" }))
+        : waypoints.map((w) => ({ lat: w.lat, lng: w.lng }));
     const payload = {
       name: routeName.trim(),
-      waypoints: waypoints.map((w) => ({ lat: w.lat, lng: w.lng })),
+      waypoints: waypointsPayload,
       exit_waypoints:
         routeType === "two_route"
           ? exitWaypoints.map((w) => ({ lat: w.lat, lng: w.lng }))
@@ -432,8 +468,10 @@ function CreatorPage() {
   };
 
   const canSave =
-    waypoints.length >= 2 &&
-    (routeType === "two_way" || exitWaypoints.length >= 2);
+    routeType === "multi_movement"
+      ? mmPoints.length >= 2
+      : waypoints.length >= 2 &&
+        (routeType === "two_way" || exitWaypoints.length >= 2);
 
   if (loading || !user || loadingRoute) return <div className="h-screen bg-navy-900" />;
 
@@ -612,7 +650,36 @@ function CreatorPage() {
             >
               Two-Route
             </button>
+            <button
+              onClick={() => setRouteType("multi_movement")}
+              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                routeType === "multi_movement" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
+              }`}
+            >
+              Multi-Movement
+            </button>
           </div>
+          {routeType === "multi_movement" && (
+            <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
+              {([
+                { v: "drive" as const, label: "Drive", Icon: Car, color: "bg-orange-500" },
+                { v: "walk" as const, label: "Walk", Icon: Footprints, color: "bg-green-500" },
+                { v: "park" as const, label: "Park", Icon: ParkingSquare, color: "bg-purple-500" },
+                { v: "stop" as const, label: "Stop", Icon: Coffee, color: "bg-yellow-500" },
+              ]).map(({ v, label, Icon, color }) => (
+                <button
+                  key={v}
+                  onClick={() => setActiveSegment(v)}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
+                    activeSegment === v ? `${color} text-white` : "text-navy-300 hover:text-white"
+                  }`}
+                  title={`Next click adds a ${label} point`}
+                >
+                  <Icon className="w-3.5 h-3.5" /> {label}
+                </button>
+              ))}
+            </div>
+          )}
           {routeType === "two_route" && (
             <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
               <button
@@ -659,17 +726,20 @@ function CreatorPage() {
           waypoints={waypoints}
           exitWaypoints={exitWaypoints}
           routeType={routeType}
+          multiMovementPoints={mmPoints}
           activeDirection={drawingLeg === "exit" ? "out" : "in"}
           onAddWaypoint={creatorMode === "draw" && !recording && !editMode ? addWaypoint : undefined}
           onAddPin={creatorMode === "draw" && !recording ? startPinPlacement : undefined}
           pins={pins}
           pinMode={creatorMode === "draw" && mode === "pin"}
           gpsPosition={gpsPos}
+          fitToWaypoints={Boolean(editId) && !gpsFlewRef.current}
           flyTo={flyTarget}
           backgroundRoutes={backgroundRoutes}
           hideWaypointMarkers={recording}
           editMode={editMode}
           editLeg={routeType === "two_route" ? drawingLeg : "entry"}
+          editTool={editTool}
           onMoveWaypoint={handleMoveWaypoint}
           onDeleteWaypoint={handleDeleteWaypoint}
           onInsertWaypoint={handleInsertWaypoint}
@@ -677,6 +747,47 @@ function CreatorPage() {
         <LocationSearch
           onSelect={(lat, lng) => setFlyTarget({ lat, lng, zoom: 17, seq: Date.now() })}
         />
+        <button
+          onClick={() => {
+            if (!gpsPos) return;
+            setFlyTarget({ lat: gpsPos.lat, lng: gpsPos.lng, zoom: 17, seq: Date.now() });
+          }}
+          disabled={!gpsPos}
+          className={`absolute top-3 right-3 z-[1000] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-full shadow-lg backdrop-blur-sm border transition-colors disabled:opacity-40 disabled:pointer-events-none ${
+            gpsPos ? "bg-blue-600 hover:bg-blue-500 text-white border-blue-400" : "bg-navy-950/90 text-navy-400 border-navy-700"
+          }`}
+          title="Center on my location"
+        >
+          <Crosshair className="w-4 h-4" /> Go to My Location
+        </button>
+        {editMode && creatorMode === "draw" && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] flex flex-col items-center gap-1.5">
+            <div className="flex items-center bg-navy-950/95 backdrop-blur-sm border border-navy-700 rounded-full p-0.5 shadow-lg">
+              {([
+                { v: "erase" as const, label: "Erase Waypoint", Icon: Eraser },
+                { v: "add" as const, label: "Add Waypoint", Icon: Plus },
+                { v: "move" as const, label: "Move Waypoint", Icon: Move },
+              ]).map(({ v, label, Icon }) => (
+                <button
+                  key={v}
+                  onClick={() => setEditTool(v)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full transition-colors ${
+                    editTool === v ? "bg-orange-500 text-white" : "text-navy-300 hover:text-white"
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" /> {label}
+                </button>
+              ))}
+            </div>
+            <div className="px-3 py-1 rounded-full bg-navy-950/95 border border-navy-700 text-white text-[11px] font-medium shadow-lg">
+              {editTool === "erase"
+                ? "Click on a waypoint to erase"
+                : editTool === "add"
+                  ? "Click on the route line to add a waypoint"
+                  : "Drag a waypoint to move it"}
+            </div>
+          </div>
+        )}
         {recording && (
           <div className="absolute top-3 right-3 z-[1000] flex items-center gap-2 bg-black/70 backdrop-blur-sm border border-red-500/60 rounded-full px-3 py-1.5 shadow-lg">
             <span className="relative flex h-3 w-3">
@@ -739,13 +850,6 @@ function CreatorPage() {
           <div className="pointer-events-none absolute top-16 left-1/2 -translate-x-1/2 z-[1000]">
             <div className="px-3 py-1.5 rounded-full bg-orange-500 text-white text-xs font-semibold shadow-lg">
               Tap the map to place a pin
-            </div>
-          </div>
-        )}
-        {editMode && creatorMode === "draw" && (
-          <div className="pointer-events-none absolute top-16 left-1/2 -translate-x-1/2 z-[1000]">
-            <div className="px-3 py-1.5 rounded-full bg-orange-500/95 text-white text-xs font-semibold shadow-lg whitespace-nowrap">
-              Drag to move • Tap marker to delete • Tap line to insert
             </div>
           </div>
         )}

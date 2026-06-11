@@ -4,6 +4,7 @@ import { Navigation, MapPin, Crosshair, Bookmark, BookmarkCheck } from "lucide-r
 import { ClientOnlyMap } from "@/components/ClientOnlyMap";
 import { supabase, type SavedRoute } from "@/lib/supabase";
 import { distanceMeters, PIN_COLORS, type Pin } from "@/lib/pins";
+import type { SegmentPoint, SegmentType } from "@/lib/supabase";
 
 export const Route = createFileRoute("/route/$token")({
   head: () => ({ meta: [{ title: "Follow Route — SiteNav" }] }),
@@ -101,9 +102,22 @@ function FollowerPage() {
     lat: w.lat,
     lng: w.lng,
   }));
-  const routeType = route.route_type === "two_route" ? "two_route" : "two_way";
+  const routeType =
+    route.route_type === "two_route"
+      ? "two_route"
+      : route.route_type === "multi_movement"
+        ? "multi_movement"
+        : "two_way";
+  const mmPoints: SegmentPoint[] =
+    routeType === "multi_movement"
+      ? ((route.waypoints || []) as SegmentPoint[]).map((p) => ({
+          lat: p.lat,
+          lng: p.lng,
+          t: ((p as { t?: SegmentType }).t ?? "drive") as SegmentType,
+        }))
+      : [];
   const pins: Pin[] = (route.pins || []).filter((p): p is Pin => !!p && typeof p.lat === "number");
-  const startPoint = waypoints[0];
+  const startPoint = routeType === "multi_movement" ? mmPoints[0] : waypoints[0];
   const distanceToStart = pos && startPoint ? distanceMeters(pos, { lat: startPoint.lat, lng: startPoint.lng }) : null;
   const showNavigateToStart = startPoint && (distanceToStart === null || distanceToStart > 100);
   const navigateHref = startPoint
@@ -140,6 +154,7 @@ function FollowerPage() {
           waypoints={waypoints}
           exitWaypoints={exitWaypoints}
           routeType={routeType}
+          multiMovementPoints={mmPoints}
           activeDirection={direction}
           pins={pins}
           gpsPosition={pos}
@@ -163,6 +178,17 @@ function FollowerPage() {
             <Crosshair className="w-4 h-4" />
             Go to My Location
           </button>
+          {showNavigateToStart && (
+            <a
+              href={navigateHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold bg-orange-500 hover:bg-orange-600 text-white rounded-full shadow-xl active:scale-[0.97]"
+            >
+              <Navigation className="w-4 h-4" />
+              Navigate to Start
+            </a>
+          )}
           <button
             onClick={saveToDashboard}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-navy-950/90 hover:bg-navy-900 text-white border border-navy-700 rounded-full shadow-lg backdrop-blur-sm"
@@ -172,17 +198,6 @@ function FollowerPage() {
             {saved ? "Saved" : "Save"}
           </button>
         </div>
-        {showNavigateToStart && (
-          <a
-            href={navigateHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="absolute top-3 left-3 z-[1000] inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold bg-orange-500 hover:bg-orange-600 text-white rounded-full shadow-xl active:scale-[0.97]"
-          >
-            <Navigation className="w-4 h-4" />
-            Navigate to Start
-          </a>
-        )}
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] flex items-center bg-navy-950/90 backdrop-blur-sm border border-navy-700 rounded-full p-0.5 shadow-lg">
           <button
             onClick={() => setDirection("in")}
