@@ -16,12 +16,19 @@ import {
   RotateCcw,
   Undo2,
   Wrench,
+  Crosshair,
+  Footprints,
+  ParkingSquare,
+  Coffee,
+  Move,
+  Plus,
+  Eraser,
 } from "lucide-react";
 import { ClientOnlyMap } from "@/components/ClientOnlyMap";
 import { type BackgroundRoute } from "@/components/RouteMap";
 import LocationSearch from "@/components/LocationSearch";
 import { useAuth } from "@/lib/auth";
-import { supabase, type RouteType } from "@/lib/supabase";
+import { supabase, type RouteType, type SegmentPoint, type SegmentType } from "@/lib/supabase";
 import { PIN_LABELS, PIN_COLORS, type Pin, type PinLabel } from "@/lib/pins";
 
 export const Route = createFileRoute("/creator")({
@@ -49,6 +56,8 @@ function CreatorPage() {
   const { edit: editId } = Route.useSearch();
   const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
   const [exitWaypoints, setExitWaypoints] = useState<Waypoint[]>([]);
+  const [mmPoints, setMmPoints] = useState<SegmentPoint[]>([]);
+  const [activeSegment, setActiveSegment] = useState<SegmentType>("drive");
   const [nextId, setNextId] = useState(1);
   const [pins, setPins] = useState<Pin[]>([]);
   const [routeType, setRouteType] = useState<RouteType>("two_way");
@@ -75,6 +84,7 @@ function CreatorPage() {
   const [creatorMode, setCreatorMode] = useState<"draw" | "record">("draw");
   const [recording, setRecording] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [editTool, setEditTool] = useState<"move" | "erase" | "add">("move");
   const [recordSummary, setRecordSummary] = useState<{ points: number; meters: number; leg: "entry" | "exit" } | null>(null);
   const recordWatchRef = useRef<number | null>(null);
   const recordLegRef = useRef<"entry" | "exit">("entry");
@@ -270,10 +280,23 @@ function CreatorPage() {
             lat: w.lat,
             lng: w.lng,
           }));
-          setWaypoints(wps);
-          setExitWaypoints(exits);
+          const rt: RouteType =
+            r.route_type === "two_route"
+              ? "two_route"
+              : r.route_type === "multi_movement"
+                ? "multi_movement"
+                : "two_way";
+          setRouteType(rt);
+          if (rt === "multi_movement") {
+            const raw = (r.waypoints || []) as SegmentPoint[];
+            setMmPoints(
+              raw.map((p) => ({ lat: p.lat, lng: p.lng, t: (p.t as SegmentType) ?? "drive" })),
+            );
+          } else {
+            setWaypoints(wps);
+            setExitWaypoints(exits);
+          }
           setNextId(wps.length + exits.length + 1);
-          setRouteType(r.route_type === "two_route" ? "two_route" : "two_way");
           setPins(
             (r.pins || []).filter((p): p is Pin => !!p && typeof p.lat === "number"),
           );
@@ -287,6 +310,10 @@ function CreatorPage() {
 
   const addWaypoint = (lat: number, lng: number) => {
     if (editMode) return;
+    if (routeType === "multi_movement") {
+      setMmPoints((p) => [...p, { lat, lng, t: activeSegment }]);
+      return;
+    }
     if (routeType === "two_route" && drawingLeg === "exit") {
       setExitWaypoints((p) => [...p, { id: nextId, lat, lng }]);
     } else {
@@ -296,6 +323,10 @@ function CreatorPage() {
   };
 
   const undoLastWaypoint = () => {
+    if (routeType === "multi_movement") {
+      setMmPoints((p) => p.slice(0, -1));
+      return;
+    }
     if (routeType === "two_route" && drawingLeg === "exit") {
       setExitWaypoints((p) => p.slice(0, -1));
     } else {
@@ -354,6 +385,7 @@ function CreatorPage() {
   const handleClear = () => {
     setWaypoints([]);
     setExitWaypoints([]);
+    setMmPoints([]);
     setNextId(1);
     setPins([]);
     setSaveStatus("idle");
@@ -371,9 +403,13 @@ function CreatorPage() {
     if (!user || !canSave || !routeName.trim()) return;
     setSaveStatus("saving");
     setErrorMsg(null);
+    const waypointsPayload =
+      routeType === "multi_movement"
+        ? mmPoints.map((p) => ({ lat: p.lat, lng: p.lng, t: p.t ?? "drive" }))
+        : waypoints.map((w) => ({ lat: w.lat, lng: w.lng }));
     const payload = {
       name: routeName.trim(),
-      waypoints: waypoints.map((w) => ({ lat: w.lat, lng: w.lng })),
+      waypoints: waypointsPayload,
       exit_waypoints:
         routeType === "two_route"
           ? exitWaypoints.map((w) => ({ lat: w.lat, lng: w.lng }))
@@ -432,8 +468,10 @@ function CreatorPage() {
   };
 
   const canSave =
-    waypoints.length >= 2 &&
-    (routeType === "two_way" || exitWaypoints.length >= 2);
+    routeType === "multi_movement"
+      ? mmPoints.length >= 2
+      : waypoints.length >= 2 &&
+        (routeType === "two_way" || exitWaypoints.length >= 2);
 
   if (loading || !user || loadingRoute) return <div className="h-screen bg-navy-900" />;
 
