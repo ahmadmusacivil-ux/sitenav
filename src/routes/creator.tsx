@@ -26,7 +26,7 @@ import { ClientOnlyMap } from "@/components/ClientOnlyMap";
 import { type BackgroundRoute } from "@/components/RouteMap";
 import LocationSearch from "@/components/LocationSearch";
 import { useAuth } from "@/lib/auth";
-import { supabase, type RouteType, type SegmentType, normalizeRouteType } from "@/lib/supabase";
+import { supabase, type RouteType, type SavedRoute, type SegmentType, normalizeRouteType } from "@/lib/supabase";
 import { PIN_LABELS, PIN_COLORS, type Pin, type PinLabel } from "@/lib/pins";
 import { toast } from "sonner";
 
@@ -49,6 +49,8 @@ interface Waypoint {
   lng: number;
   t: SegmentType; // "drive" | "walk"
 }
+
+const routeSelectColumns = "id,user_id,name,waypoints,exit_waypoints,route_type,pins,share_token,created_at";
 
 function CreatorPage() {
   const { user, loading, signOut } = useAuth();
@@ -416,7 +418,7 @@ function CreatorPage() {
         .update(payload)
         .eq("id", editingId)
         .eq("user_id", user.id)
-        .select("id,share_token")
+        .select(routeSelectColumns)
         .maybeSingle();
       if (error) {
         setSaveStatus("error");
@@ -428,7 +430,7 @@ function CreatorPage() {
         // RLS or filter returned no row — verify the row still exists and is owned by us.
         const { data: check } = await supabase
           .from("routes")
-          .select("id,share_token")
+            .select("id,share_token")
           .eq("id", editingId)
           .eq("user_id", user.id)
           .maybeSingle();
@@ -441,16 +443,50 @@ function CreatorPage() {
           return;
         }
       }
+      const { data: refreshedRoutes, error: refreshError } = await supabase
+        .from("routes")
+        .select(routeSelectColumns)
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      if (refreshError) {
+        setSaveStatus("error");
+        setErrorMsg(refreshError.message);
+        toast.error("Failed to refresh routes", { description: refreshError.message });
+        return;
+      }
+      const freshRoutes = (refreshedRoutes as SavedRoute[] | null) ?? [];
+      const savedRoute = freshRoutes.find((r) => r.id === editingId);
+      if (!savedRoute) {
+        setSaveStatus("error");
+        setErrorMsg("Route saved, but it was not returned in your route list.");
+        toast.error("Update failed", {
+          description: "The route was not returned in your dashboard list.",
+        });
+        return;
+      }
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem(
+          "sitenav:my_routes_prefetch",
+          JSON.stringify({ userId: user.id, routes: freshRoutes, savedAt: Date.now() }),
+        );
+      }
       setSaveStatus("saved");
-      const token = data?.share_token ?? editingShareToken;
+      const token = savedRoute.share_token ?? data?.share_token ?? editingShareToken;
       if (token) setShareUrl(`${window.location.origin}/route/${token}`);
       setNamePromptOpen(false);
-      toast.success("Route updated", {
+      toast.success("Route updated successfully", {
         description: `"${routeName.trim()}" saved to your dashboard.`,
       });
       // Brief delay so the user sees the confirmation, then return to the
       // dashboard where the updated route is visible in "My Routes".
-      setTimeout(() => navigate({ to: "/dashboard" }), 900);
+      setTimeout(
+        () =>
+          navigate({
+            to: "/dashboard",
+            search: { tab: "mine", updated: editingId, refresh: String(Date.now()) },
+          }),
+        900,
+      );
     } else {
       const { data, error } = await supabase
         .from("routes")
