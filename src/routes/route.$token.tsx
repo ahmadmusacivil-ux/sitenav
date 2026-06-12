@@ -5,6 +5,7 @@ import { ClientOnlyMap } from "@/components/ClientOnlyMap";
 import { supabase, type SavedRoute, normalizeRouteType } from "@/lib/supabase";
 import { distanceMeters, PIN_COLORS, type Pin } from "@/lib/pins";
 import type { SegmentType } from "@/lib/supabase";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/route/$token")({
   head: () => ({ meta: [{ title: "Follow Route — SiteNav" }] }),
@@ -13,6 +14,7 @@ export const Route = createFileRoute("/route/$token")({
 
 function FollowerPage() {
   const { token } = Route.useParams();
+  const { user } = useAuth();
   const [route, setRoute] = useState<SavedRoute | null | "missing">("missing");
   const [loading, setLoading] = useState(true);
   const [pos, setPos] = useState<{ lat: number; lng: number } | null>(null);
@@ -42,6 +44,23 @@ function FollowerPage() {
       setSaved(arr.includes(token));
     } catch { /* ignore */ }
   }, [token]);
+
+  // Auto-track shared routes: when a signed-in viewer (who isn't the owner)
+  // successfully loads a shareable link, remember the token so it appears in
+  // their dashboard "Shared with Me" tab automatically.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!user || !route || route === "missing") return;
+    if ((route as SavedRoute).user_id === user.id) return;
+    try {
+      const arr: string[] = JSON.parse(localStorage.getItem("sitenav:shared_tokens") || "[]");
+      if (!arr.includes(token)) {
+        arr.push(token);
+        localStorage.setItem("sitenav:shared_tokens", JSON.stringify(arr));
+      }
+      setSaved(true);
+    } catch { /* ignore */ }
+  }, [user, route, token]);
 
   const saveToDashboard = () => {
     try {
