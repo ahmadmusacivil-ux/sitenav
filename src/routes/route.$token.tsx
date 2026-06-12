@@ -1,11 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Navigation, MapPin, Crosshair, Bookmark, BookmarkCheck } from "lucide-react";
+import { Navigation, MapPin, Crosshair, Bookmark, BookmarkCheck, ShieldAlert, AlertTriangle, Clock } from "lucide-react";
 import { ClientOnlyMap } from "@/components/ClientOnlyMap";
 import { supabase, type SavedRoute, normalizeRouteType } from "@/lib/supabase";
 import { distanceMeters, PIN_COLORS, type Pin } from "@/lib/pins";
 import type { SegmentType } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
+
+const SAFETY_ACK_KEY = "lost:safety_ack";
 
 export const Route = createFileRoute("/route/$token")({
   head: () => ({ meta: [{ title: "Follow Route — SiteNav" }] }),
@@ -24,11 +26,13 @@ function FollowerPage() {
   const [followGps, setFollowGps] = useState(false);
   const [flyTarget, setFlyTarget] = useState<{ lat: number; lng: number; zoom?: number; seq: number } | null>(null);
   const [saved, setSaved] = useState(false);
+  const [safetyOpen, setSafetyOpen] = useState(false);
+  const [ackBusy, setAckBusy] = useState(false);
 
   useEffect(() => {
     supabase
       .from("routes")
-      .select("id,user_id,name,waypoints,exit_waypoints,route_type,pins,share_token,created_at")
+      .select("id,user_id,name,waypoints,exit_waypoints,route_type,pins,share_token,created_at,expires_at")
       .eq("share_token", token)
       .maybeSingle()
       .then(({ data }) => {
@@ -36,6 +40,34 @@ function FollowerPage() {
         setLoading(false);
       });
   }, [token]);
+
+  // Show safety modal once per device. Open after the route loads (so we don't
+  // flash it on a "route not found" page).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!route || route === "missing") return;
+    try {
+      const ack = window.localStorage.getItem(SAFETY_ACK_KEY);
+      if (!ack) setSafetyOpen(true);
+    } catch { /* ignore */ }
+  }, [route]);
+
+  const acknowledgeSafety = async () => {
+    if (ackBusy || !route || route === "missing") return;
+    setAckBusy(true);
+    try {
+      const { error } = await supabase.from("acknowledgements").insert({
+        route_id: (route as SavedRoute).id,
+        share_token: token,
+        user_id: user?.id ?? null,
+      });
+      if (error) console.error("[acknowledgement] insert failed:", error);
+      try { window.localStorage.setItem(SAFETY_ACK_KEY, new Date().toISOString()); } catch { /* ignore */ }
+    } finally {
+      setAckBusy(false);
+      setSafetyOpen(false);
+    }
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -151,6 +183,16 @@ function FollowerPage() {
         .sort((a, b) => a.dist - b.dist)[0]?.pin
     : null;
 
+  const createdAt = route.created_at ? new Date(route.created_at) : null;
+  const expiresAt = route.expires_at ? new Date(route.expires_at + "T23:59:59") : null;
+  const now = new Date();
+  const isExpired = expiresAt ? expiresAt.getTime() < now.getTime() : false;
+  const isStale =
+    !expiresAt && createdAt
+      ? now.getTime() - createdAt.getTime() > 30 * 24 * 60 * 60 * 1000
+      : false;
+  const dateFmt = (d: Date) => d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       <div className="flex-shrink-0 bg-navy-950 border-b border-navy-800 px-4 py-2.5 z-50 flex items-center gap-3">
@@ -163,11 +205,36 @@ function FollowerPage() {
             {waypoints.length} waypoints
             {pos ? " • Live GPS active" : geoError ? ` • ${geoError}` : " • Waiting for GPS…"}
           </p>
+          <p className="text-navy-500 text-[11px] leading-tight mt-0.5">
+            {createdAt && <>Route created: {dateFmt(createdAt)}</>}
+            {expiresAt && (
+              <>
+                {createdAt && " • "}
+                Expires: {dateFmt(expiresAt)}
+              </>
+            )}
+          </p>
         </div>
         <div className="hidden sm:flex items-center gap-2 text-xs text-navy-400">
           <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" /> You
         </div>
       </div>
+
+      {isExpired && (
+        <div className="flex-shrink-0 bg-red-600 text-white px-4 py-2.5 z-40 flex items-start gap-2 text-sm">
+          <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+          <span>
+            <span className="font-semibold">This route may be outdated.</span> Verify current conditions
+            with site personnel before following it.
+          </span>
+        </div>
+      )}
+      {!isExpired && isStale && (
+        <div className="flex-shrink-0 bg-amber-500/15 border-b border-amber-500/40 text-amber-200 px-4 py-2 z-40 flex items-start gap-2 text-xs">
+          <Clock className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+          <span>This route was created over 30 days ago. Conditions may have changed.</span>
+        </div>
+      )}
 
       <div className="flex-1 relative min-h-0">
         <ClientOnlyMap
@@ -268,6 +335,46 @@ function FollowerPage() {
           </div>
         )}
       </div>
+
+      {safetyOpen && (
+        <div className="fixed inset-0 z-[3000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-navy-900 border border-navy-700 rounded-2xl p-6 shadow-2xl">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg bg-orange-500/15 flex items-center justify-center flex-shrink-0">
+                <ShieldAlert className="w-5 h-5 text-orange-400" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-white leading-tight">
+                  Before you follow this route
+                </h2>
+              </div>
+            </div>
+            <p className="text-navy-200 text-sm leading-relaxed">
+              LOST is a visual aid only. Always follow site signage, barriers, and instructions from
+              site personnel over the app. Never operate your phone while driving — set up your
+              route before you start moving. If the route looks unsafe or wrong, stop and contact
+              site personnel.
+            </p>
+            <p className="mt-4 text-sm">
+              <a
+                href="/safety"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-orange-400 hover:text-orange-300 underline"
+              >
+                Read the full Safety Disclaimer
+              </a>
+            </p>
+            <button
+              onClick={acknowledgeSafety}
+              disabled={ackBusy}
+              className="mt-6 w-full px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg disabled:opacity-50"
+            >
+              {ackBusy ? "Saving…" : "I understand"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
