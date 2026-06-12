@@ -33,7 +33,7 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/creator")({
   head: () => ({
     meta: [
-      { title: "Create a Route — SiteNav" },
+      { title: "Create a Route — LOST" },
       { name: "description", content: "Draw a custom route on the satellite map and share it as a link." },
     ],
   }),

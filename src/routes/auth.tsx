@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth";
 import SiteFooter from "@/components/SiteFooter";
 
 export const Route = createFileRoute("/auth")({
-  head: () => ({ meta: [{ title: "Sign in — SiteNav" }] }),
+  head: () => ({ meta: [{ title: "Sign in — LOST" }] }),
   component: AuthPage,
 });
 
@@ -62,7 +62,7 @@ function AuthPage() {
         <div className="w-9 h-9 bg-orange-500 rounded-lg flex items-center justify-center">
           <Navigation className="w-5 h-5 text-white" />
         </div>
-        <span className="text-xl font-bold tracking-tight">SiteNav</span>
+        <span className="text-xl font-bold tracking-tight">LOST</span>
       </div>
       <div className="flex-1 flex items-center justify-center px-6">
         <div className="w-full max-w-md bg-navy-800/60 border border-navy-700 rounded-2xl p-8 shadow-xl">
