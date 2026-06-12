@@ -7,15 +7,21 @@ import AppHeader from "@/components/AppHeader";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [{ title: "Your Routes — SiteNav" }] }),
+  validateSearch: (search: Record<string, unknown>): { tab?: "mine" | "shared"; updated?: string; refresh?: string } => ({
+    tab: search.tab === "shared" ? "shared" : search.tab === "mine" ? "mine" : undefined,
+    updated: typeof search.updated === "string" ? search.updated : undefined,
+    refresh: typeof search.refresh === "string" ? search.refresh : undefined,
+  }),
   component: Dashboard,
 });
 
 function Dashboard() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const [routes, setRoutes] = useState<SavedRoute[] | null>(null);
   const [sharedRoutes, setSharedRoutes] = useState<SavedRoute[] | null>(null);
-  const [tab, setTab] = useState<"mine" | "shared">("mine");
+  const [tab, setTab] = useState<"mine" | "shared">(search.tab ?? "mine");
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -23,14 +29,34 @@ function Dashboard() {
   }, [user, loading, navigate]);
 
   useEffect(() => {
+    if (search.tab) setTab(search.tab);
+  }, [search.tab]);
+
+  useEffect(() => {
     if (!user) return;
+    let cancelled = false;
+    if (typeof window !== "undefined") {
+      const cached = window.sessionStorage.getItem("sitenav:my_routes_prefetch");
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached) as { userId?: string; routes?: SavedRoute[]; savedAt?: number };
+          if (parsed.userId === user.id && Array.isArray(parsed.routes)) setRoutes(parsed.routes);
+        } catch { /* ignore */ }
+        window.sessionStorage.removeItem("sitenav:my_routes_prefetch");
+      }
+    }
     supabase
       .from("routes")
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
-      .then(({ data }) => setRoutes((data as SavedRoute[]) ?? []));
-  }, [user]);
+      .then(({ data }) => {
+        if (!cancelled) setRoutes((data as SavedRoute[]) ?? []);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, search.updated, search.refresh]);
 
   useEffect(() => {
     if (!user) return;
