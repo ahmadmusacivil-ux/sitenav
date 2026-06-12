@@ -612,6 +612,34 @@ function CreatorPage() {
               <Wrench className="w-3.5 h-3.5" /> Edit
             </button>
           </div>
+          {editMode && (
+            <>
+              <div className="inline-flex items-center bg-navy-950/95 backdrop-blur-sm border border-navy-700 rounded-full p-0.5 shadow-lg">
+                {([
+                  { v: "erase" as const, label: "Erase", Icon: Eraser },
+                  { v: "add" as const, label: "Add", Icon: Plus },
+                  { v: "move" as const, label: "Move", Icon: Move },
+                ]).map(({ v, label, Icon }) => (
+                  <button
+                    key={v}
+                    onClick={() => setEditTool(v)}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full transition-colors ${
+                      editTool === v ? "bg-orange-500 text-white" : "text-navy-300 hover:text-white"
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" /> {label}
+                  </button>
+                ))}
+              </div>
+              <span className="text-navy-400 text-[11px] font-medium">
+                {editTool === "erase"
+                  ? "Click a waypoint to erase"
+                  : editTool === "add"
+                    ? "Click the route line to add"
+                    : "Drag a waypoint to move"}
+              </span>
+            </>
+          )}
           {!editingId && (
             <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
               <button
