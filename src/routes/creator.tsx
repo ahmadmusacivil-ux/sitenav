@@ -50,7 +50,14 @@ interface Waypoint {
   t: SegmentType; // "drive" | "walk"
 }
 
-const routeSelectColumns = "id,user_id,name,waypoints,exit_waypoints,route_type,pins,share_token,created_at";
+const routeSelectColumns =
+  "id,user_id,name,waypoints,exit_waypoints,route_type,pins,share_token,created_at,expires_at";
+
+function defaultExpiryISO(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 30);
+  return d.toISOString().slice(0, 10);
+}
 
 function CreatorPage() {
   const { user, loading, signOut } = useAuth();
@@ -74,6 +81,7 @@ function CreatorPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [namePromptOpen, setNamePromptOpen] = useState(false);
   const [routeName, setRouteName] = useState("");
+  const [expiresAt, setExpiresAt] = useState<string>(() => defaultExpiryISO());
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [gpsPos, setGpsPos] = useState<{ lat: number; lng: number } | null>(null);
@@ -254,7 +262,7 @@ function CreatorPage() {
     setLoadingRoute(true);
     supabase
       .from("routes")
-      .select("id,user_id,name,waypoints,exit_waypoints,route_type,pins,share_token,created_at")
+      .select(routeSelectColumns)
       .eq("id", editId)
       .eq("user_id", user.id)
       .maybeSingle()
@@ -268,6 +276,7 @@ function CreatorPage() {
               route_type: string | null;
               pins: Pin[] | null;
               share_token: string;
+              expires_at: string | null;
             }
           | null;
         if (r) {
@@ -292,6 +301,7 @@ function CreatorPage() {
             (r.pins || []).filter((p): p is Pin => !!p && typeof p.lat === "number"),
           );
           setRouteName(r.name);
+          setExpiresAt(r.expires_at ?? "");
           setEditingId(r.id);
           setEditingShareToken(r.share_token);
         }
@@ -411,6 +421,7 @@ function CreatorPage() {
         label: p.label,
         note: p.note ?? null,
       })),
+      expires_at: expiresAt ? expiresAt : null,
     };
     if (editingId) {
       // Debug: confirm the row exists and the logged-in user owns it before
