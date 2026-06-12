@@ -827,6 +827,32 @@ function CreatorPage() {
               ))}
             </div>
           )}
+          {!editMode && (
+            <div className="inline-flex items-center gap-1.5 bg-navy-800/80 rounded-lg px-2.5 py-1">
+              <span className="text-xs font-medium text-navy-300">Expires</span>
+              <input
+                type="date"
+                value={expiresAt}
+                min={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setExpiresAt(e.target.value)}
+                className="bg-navy-950 border border-navy-700 rounded px-1.5 py-0.5 text-xs text-white focus:outline-none focus:border-orange-500"
+                title="Recommended for sites where conditions change."
+              />
+              {expiresAt && (
+                <button
+                  type="button"
+                  onClick={() => setExpiresAt("")}
+                  className="text-navy-400 hover:text-white text-xs leading-none px-1"
+                  title="Clear expiry"
+                >
+                  ×
+                </button>
+              )}
+              <span className="hidden md:inline text-[10px] text-navy-500">
+                Recommended for sites where conditions change.
+              </span>
+            </div>
+          )}
         </div>
         {shareUrl && (
           <div className="mt-2 flex items-center gap-2 bg-navy-900 border border-navy-700 rounded-lg px-3 py-2">
