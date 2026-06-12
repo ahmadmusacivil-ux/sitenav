@@ -124,28 +124,66 @@ function TermsPage() {
         </LegalSubsection>
       </LegalSection>
 
-      <LegalSection heading="6. [Section content to be added]">
-        <p className="text-navy-500 italic">
-          [Please paste the original content for Terms Section 6 into{" "}
-          <code>src/routes/terms.tsx</code>. This placeholder was added because the section was
-          truncated when the content was provided.]
-        </p>
+      <LegalSection heading="6. Intellectual Property">
+        <LegalSubsection heading="6.1 Our Intellectual Property">
+          <p>
+            The Service — including its name, branding, logo, design, software, code, features, and all
+            content other than User Content — is owned by us or our licensors and is protected by
+            copyright, trademark, and other intellectual property laws. These Terms do not transfer
+            any of our intellectual property to you.
+          </p>
+        </LegalSubsection>
+        <LegalSubsection heading="6.2 Your Licence to Use the Service">
+          <p>
+            We grant you a limited, personal, non-exclusive, non-transferable, revocable licence to
+            use the Service for its intended purpose in accordance with these Terms. You may not copy,
+            modify, reverse-engineer, decompile, or create derivative works of the Service except as
+            permitted by law.
+          </p>
+        </LegalSubsection>
+        <LegalSubsection heading="6.3 Third-Party Content">
+          <p>
+            Satellite imagery is provided by third-party providers (currently Esri World Imagery) and
+            remains the property of those providers, subject to their own terms. Map data may be
+            outdated and may not reflect current site conditions.
+          </p>
+        </LegalSubsection>
+        <LegalSubsection heading="6.4 Feedback">
+          <p>
+            If you send us ideas, suggestions, or feedback about the Service, you agree we may use them
+            without restriction or compensation to you.
+          </p>
+        </LegalSubsection>
       </LegalSection>
 
-      <LegalSection heading="7. [Section content to be added]">
-        <p className="text-navy-500 italic">
-          [Please paste the original content for Terms Section 7 into{" "}
-          <code>src/routes/terms.tsx</code>. This placeholder was added because the section was
-          truncated when the content was provided.]
+      <LegalSection heading="7. Safety and Navigation Disclaimer">
+        <p className="uppercase tracking-wide text-sm font-semibold text-orange-400 mb-3">
+          The Service is a visual navigation aid only. Always prioritise what you see in the real
+          world over what the app shows.
         </p>
+        <p>You acknowledge and agree that:</p>
+        <Bullets
+          items={[
+            "GPS positioning is inherently imprecise and can be affected by atmospheric conditions, satellite availability, obstructions (buildings, structures, machinery, terrain), device hardware, and signal interference. Your displayed position may be wrong by several metres or more.",
+            "Routes are created by users and may be outdated, incomplete, or wrong. Site conditions change constantly — especially on construction sites.",
+            "Physical signage, barriers, traffic controllers, spotters, site supervisors, and site rules ALWAYS take precedence over any route shown in the Service. If the app conflicts with what you see on the ground, follow the real world, not the app.",
+            "You must not interact with the Service while driving or operating machinery. Review the route before moving, mount your device safely, and stop in a safe location before touching the screen.",
+            "If any part of a route appears unsafe, blocked, or incorrect, you must stop and seek directions from site personnel rather than continue following the route.",
+            "The Service does not provide warnings about hazards, traffic, weather, ground conditions, overhead obstructions, vehicle height/weight limits, or exclusion zones. Identifying and responding to hazards is entirely your responsibility.",
+            "You remain fully responsible at all times for your own safety, the safety of your vehicle and load, and compliance with all site safety requirements, inductions, traffic management plans, and applicable laws.",
+          ]}
+        />
       </LegalSection>
 
-      <LegalSection heading="8. [Section content to be added]">
-        <p className="text-navy-500 italic">
-          [Please paste the original content for Terms Section 8 into{" "}
-          <code>src/routes/terms.tsx</code>. This placeholder was added because the section was
-          truncated when the content was provided.]
-        </p>
+      <LegalSection heading="8. Service Availability">
+        <Bullets
+          items={[
+            'The Service is provided on an "as available" basis. We do not guarantee that it will be uninterrupted, error-free, or available at any particular time — including at the moment you need it on site.',
+            "The Service requires an internet connection and GPS-capable device. Coverage on remote or enclosed sites may be poor or unavailable. Always have a backup plan (e.g. contact details for site personnel).",
+            "We may modify, suspend, or discontinue any part of the Service at any time. Where reasonably practicable, we will give notice of material changes.",
+            "Force majeure: we will not be liable for any failure or delay in the Service caused by events beyond our reasonable control, including but not limited to internet or telecommunications outages, GPS or satellite system failures or degradation, cloud hosting or database provider outages, map imagery provider outages, power failures, natural disasters, severe weather, government actions, or labour disputes. You acknowledge that delays or losses arising from Service unavailability (including vehicle, delivery, or project delays) are at your risk, and you should always maintain a backup means of navigation and communication.",
+          ]}
+        />
       </LegalSection>
 
       <LegalSection heading="9. Australian Consumer Law">
