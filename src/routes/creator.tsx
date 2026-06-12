@@ -377,6 +377,12 @@ function CreatorPage() {
 
   const openSavePrompt = () => {
     if (!canSave) return;
+    // When editing an existing route, skip the name prompt entirely and
+    // save in place under the current name.
+    if (editingId) {
+      void handleSave();
+      return;
+    }
     setRouteName(`Route ${new Date().toLocaleString()}`);
     setErrorMsg(null);
     setNamePromptOpen(true);
@@ -408,16 +414,29 @@ function CreatorPage() {
         .from("routes")
         .update(payload)
         .eq("id", editingId)
-        .eq("user_id", user.id)
         .select("id,share_token")
         .maybeSingle();
-      if (error || !data) {
+      if (error) {
         setSaveStatus("error");
-        setErrorMsg(error?.message ?? "Update failed — no rows were modified.");
+        setErrorMsg(error.message);
         return;
       }
+      if (!data) {
+        // RLS or filter returned no row — verify the row still exists and is owned by us.
+        const { data: check } = await supabase
+          .from("routes")
+          .select("id,share_token")
+          .eq("id", editingId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (!check) {
+          setSaveStatus("error");
+          setErrorMsg("Update failed — route not found or you don't have permission to edit it.");
+          return;
+        }
+      }
       setSaveStatus("saved");
-      const token = data.share_token ?? editingShareToken;
+      const token = data?.share_token ?? editingShareToken;
       if (token) setShareUrl(`${window.location.origin}/route/${token}`);
       setNamePromptOpen(false);
       // Return to dashboard so the updated route (and any name change) is
