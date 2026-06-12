@@ -413,38 +413,66 @@ function CreatorPage() {
       })),
     };
     if (editingId) {
+      // Debug: confirm the row exists and the logged-in user owns it before
+      // attempting the update. This pinpoints whether failures are caused by
+      // a wrong route id, a user_id mismatch, or an RLS policy gap.
+      const { data: preCheck, error: preCheckError } = await supabase
+        .from("routes")
+        .select("id,user_id")
+        .eq("id", editingId)
+        .maybeSingle();
+      // eslint-disable-next-line no-console
+      console.log("[route-update] attempting update", {
+        editingId,
+        authUserId: user.id,
+        rowFound: Boolean(preCheck),
+        rowUserId: preCheck?.user_id,
+        preCheckError: preCheckError?.message,
+      });
+      if (preCheckError) {
+        setSaveStatus("error");
+        setErrorMsg(preCheckError.message);
+        toast.error("Update failed", { description: preCheckError.message });
+        return;
+      }
+      if (!preCheck) {
+        setSaveStatus("error");
+        setErrorMsg("Route not found. It may have been deleted.");
+        toast.error("Update failed", {
+          description: "Route not found. It may have been deleted.",
+        });
+        return;
+      }
+      if (preCheck.user_id !== user.id) {
+        setSaveStatus("error");
+        setErrorMsg("You don't have permission to edit this route.");
+        toast.error("Update failed", {
+          description: `Route belongs to a different account (${preCheck.user_id.slice(0, 8)}…).`,
+        });
+        return;
+      }
       const { data, error } = await supabase
         .from("routes")
         .update(payload)
         .eq("id", editingId)
-        .eq("user_id", user.id)
         .select(routeSelectColumns)
         .maybeSingle();
       if (error) {
+        // eslint-disable-next-line no-console
+        console.error("[route-update] update error", error);
         setSaveStatus("error");
         setErrorMsg(error.message);
-        toast.error("Failed to save changes", { description: error.message });
+        toast.error("Update failed", { description: error.message });
         return;
       }
       if (!data) {
-        const { data: check } = await supabase
-          .from("routes")
-            .select("id,share_token")
-          .eq("id", editingId)
-          .eq("user_id", user.id)
-          .maybeSingle();
-        if (!check) {
-          setSaveStatus("error");
-          setErrorMsg("Update failed — route not found or you don't have permission to edit it.");
-          toast.error("Update failed", {
-            description: "Route not found or you don't have permission to edit it.",
-          });
-          return;
-        }
         setSaveStatus("error");
-        setErrorMsg("Update failed — no rows were modified.");
+        setErrorMsg(
+          "Update succeeded but no row was returned. Check the RLS UPDATE policy on `routes` allows auth.uid() = user_id.",
+        );
         toast.error("Update failed", {
-          description: "No route rows were updated. Please try opening the route from My Routes again.",
+          description:
+            "RLS may be blocking the update. Ensure the routes table has an UPDATE policy: auth.uid() = user_id.",
         });
         return;
       }
