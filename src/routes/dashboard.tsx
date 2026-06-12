@@ -60,6 +60,7 @@ function Dashboard() {
 
   useEffect(() => {
     if (!user) return;
+    if (tab !== "shared") return;
     let tokens: string[] = [];
     try {
       tokens = JSON.parse(localStorage.getItem("sitenav:shared_tokens") || "[]");
@@ -68,16 +69,22 @@ function Dashboard() {
       setSharedRoutes([]);
       return;
     }
+    setSharedRoutes(null);
     supabase
       .from("routes")
       .select("*")
       .in("share_token", tokens)
       .order("created_at", { ascending: false })
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("[dashboard] shared routes query failed:", error);
+          setSharedRoutes([]);
+          return;
+        }
         const rows = ((data as SavedRoute[]) ?? []).filter((r) => r.user_id !== user.id);
         setSharedRoutes(rows);
       });
-  }, [user]);
+  }, [user, tab, search.refresh]);
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this route?")) return;
