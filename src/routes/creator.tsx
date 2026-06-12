@@ -427,7 +427,6 @@ function CreatorPage() {
         return;
       }
       if (!data) {
-        // RLS or filter returned no row — verify the row still exists and is owned by us.
         const { data: check } = await supabase
           .from("routes")
             .select("id,share_token")
@@ -442,6 +441,12 @@ function CreatorPage() {
           });
           return;
         }
+        setSaveStatus("error");
+        setErrorMsg("Update failed — no rows were modified.");
+        toast.error("Update failed", {
+          description: "No route rows were updated. Please try opening the route from My Routes again.",
+        });
+        return;
       }
       const { data: refreshedRoutes, error: refreshError } = await supabase
         .from("routes")
@@ -465,10 +470,12 @@ function CreatorPage() {
         return;
       }
       if (typeof window !== "undefined") {
-        window.sessionStorage.setItem(
-          "sitenav:my_routes_prefetch",
-          JSON.stringify({ userId: user.id, routes: freshRoutes, savedAt: Date.now() }),
-        );
+        try {
+          window.sessionStorage.setItem(
+            "sitenav:my_routes_prefetch",
+            JSON.stringify({ userId: user.id, routes: freshRoutes, savedAt: Date.now() }),
+          );
+        } catch { /* ignore */ }
       }
       setSaveStatus("saved");
       const token = savedRoute.share_token ?? data?.share_token ?? editingShareToken;
