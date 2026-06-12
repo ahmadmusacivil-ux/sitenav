@@ -45,4 +45,5 @@ export type SavedRoute = {
   pins?: Pin[] | null;
   share_token: string;
   created_at: string;
+  expires_at?: string | null;
 };

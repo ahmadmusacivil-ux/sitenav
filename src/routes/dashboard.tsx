@@ -4,6 +4,7 @@ import { Plus, Share2, Trash2, MapPin, Check, Eye, Pin as PinIcon, User } from "
 import { supabase, type SavedRoute } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import AppHeader from "@/components/AppHeader";
+import SiteFooter from "@/components/SiteFooter";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [{ title: "Your Routes — SiteNav" }] }),
@@ -292,6 +293,7 @@ function Dashboard() {
           )
         )}
       </main>
+      <SiteFooter />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { MapPin, Navigation, Share2, ChevronRight } from "lucide-react";
+import SiteFooter from "@/components/SiteFooter";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -123,17 +124,7 @@ function Index() {
         </div>
       </section>
 
-      <footer className="bg-navy-950 py-8 px-6 md:px-12 border-t border-navy-800">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-orange-500 rounded-md flex items-center justify-center">
-              <Navigation className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-semibold text-navy-300">SiteNav</span>
-          </div>
-          <p className="text-sm text-navy-500">GPS navigation for the field.</p>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

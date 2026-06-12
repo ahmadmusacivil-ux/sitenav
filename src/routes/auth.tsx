@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Navigation } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
+import SiteFooter from "@/components/SiteFooter";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Sign in — SiteNav" }] }),
@@ -18,6 +19,7 @@ function AuthPage() {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
+  const [agreed, setAgreed] = useState(false);
 
   useEffect(() => {
     if (!loading && user) navigate({ to: "/dashboard" });
@@ -25,6 +27,10 @@ function AuthPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (mode === "signup" && !agreed) {
+      setErr("Please agree to the Terms, Privacy Policy, and Safety Disclaimer to continue.");
+      return;
+    }
     setErr(null);
     setInfo(null);
     setBusy(true);
@@ -92,9 +98,34 @@ function AuthPage() {
             </div>
             {err && <p className="text-sm text-red-400">{err}</p>}
             {info && <p className="text-sm text-green-400">{info}</p>}
+            {mode === "signup" && (
+              <label className="flex items-start gap-2.5 text-xs text-navy-200 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={agreed}
+                  onChange={(e) => setAgreed(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-navy-600 bg-navy-900 text-orange-500 focus:ring-orange-500 focus:ring-offset-0 cursor-pointer"
+                />
+                <span>
+                  I have read and agree to the{" "}
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-300 underline">
+                    Terms &amp; Conditions
+                  </a>
+                  ,{" "}
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-300 underline">
+                    Privacy Policy
+                  </a>
+                  , and{" "}
+                  <a href="/safety" target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-300 underline">
+                    Safety Disclaimer
+                  </a>
+                  .
+                </span>
+              </label>
+            )}
             <button
               type="submit"
-              disabled={busy}
+              disabled={busy || (mode === "signup" && !agreed)}
               className="w-full px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-colors disabled:opacity-50"
             >
               {busy ? "Please wait..." : mode === "signin" ? "Sign In" : "Sign Up"}
@@ -105,6 +136,7 @@ function AuthPage() {
               setMode(mode === "signin" ? "signup" : "signin");
               setErr(null);
               setInfo(null);
+              setAgreed(false);
             }}
             className="mt-5 w-full text-sm text-navy-300 hover:text-white"
           >
@@ -114,6 +146,7 @@ function AuthPage() {
           </button>
         </div>
       </div>
+      <SiteFooter />
     </div>
   );
 }
