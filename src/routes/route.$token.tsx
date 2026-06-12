@@ -10,7 +10,7 @@ import { useAuth } from "@/lib/auth";
 const SAFETY_ACK_KEY = "lost:safety_ack";
 
 export const Route = createFileRoute("/route/$token")({
-  head: () => ({ meta: [{ title: "Follow Route — SiteNav" }] }),
+  head: () => ({ meta: [{ title: "Follow Route — LOST" }] }),
   component: FollowerPage,
 });
 

@@ -7,7 +7,7 @@ import AppHeader from "@/components/AppHeader";
 import SiteFooter from "@/components/SiteFooter";
 
 export const Route = createFileRoute("/dashboard")({
-  head: () => ({ meta: [{ title: "Your Routes — SiteNav" }] }),
+  head: () => ({ meta: [{ title: "Your Routes — LOST" }] }),
   validateSearch: (search: Record<string, unknown>): { tab?: "mine" | "shared"; updated?: string; refresh?: string } => ({
     tab: search.tab === "shared" ? "shared" : search.tab === "mine" ? "mine" : undefined,
     updated: typeof search.updated === "string" ? search.updated : undefined,

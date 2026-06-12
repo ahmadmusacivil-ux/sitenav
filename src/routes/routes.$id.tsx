@@ -8,7 +8,7 @@ import type { Pin } from "@/lib/pins";
 import type { SegmentType } from "@/lib/supabase";
 
 export const Route = createFileRoute("/routes/$id")({
-  head: () => ({ meta: [{ title: "Route — SiteNav" }] }),
+  head: () => ({ meta: [{ title: "Route — LOST" }] }),
   component: OwnerRouteView,
 });
 

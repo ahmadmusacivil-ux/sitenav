@@ -12,7 +12,7 @@ export default function AppHeader({ title }: { title?: string }) {
         <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
           <Navigation className="w-4 h-4 text-white" />
         </div>
-        <span className="font-bold text-white">SiteNav</span>
+        <span className="font-bold text-white">LOST</span>
         {title && <span className="hidden sm:inline text-navy-400 text-sm ml-2">/ {title}</span>}
       </Link>
       <div className="flex items-center gap-3">

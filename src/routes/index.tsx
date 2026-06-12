@@ -6,10 +6,10 @@ import SiteFooter from "@/components/SiteFooter";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "SiteNav — GPS for the jobsite" },
-      { name: "description", content: "Draw custom routes through construction sites, farms, and unmapped areas. Share a link, follow with live GPS." },
-      { property: "og:title", content: "SiteNav — GPS for the jobsite" },
-      { property: "og:description", content: "Navigate sites that Google Maps can't. Draw a route, share a link, follow live." },
+      { title: "LOST — Never get lost on-site again." },
+      { name: "description", content: "LOST — GPS navigation for unmapped sites. Draw or record a route, share it, and guide anyone to the exact spot." },
+      { property: "og:title", content: "LOST — Never get lost on-site again." },
+      { property: "og:description", content: "LOST — GPS navigation for unmapped sites. Draw or record a route, share it, and guide anyone to the exact spot." },
     ],
   }),
   component: Index,
@@ -27,7 +27,7 @@ function Index() {
             <div className="w-9 h-9 bg-orange-500 rounded-lg flex items-center justify-center">
               <Navigation className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold tracking-tight">SiteNav</span>
+            <span className="text-xl font-bold tracking-tight">LOST</span>
           </div>
           <Link to="/creator" className="text-sm font-medium text-navy-200 hover:text-white transition-colors">
             Sign In
@@ -40,10 +40,12 @@ function Index() {
               <MapPin className="w-3.5 h-3.5" />
               GPS for the jobsite
             </div>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.1] tracking-tight mb-6">
-              Navigate sites that
-              <span className="text-orange-500"> Google Maps can't</span>
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold leading-[1.1] tracking-tight mb-6">
+              <span className="text-orange-500">LOST</span>
             </h1>
+            <p className="text-xl md:text-2xl text-white font-semibold leading-relaxed mb-4 max-w-xl">
+              Never get lost on-site again.
+            </p>
             <p className="text-lg md:text-xl text-navy-300 leading-relaxed mb-10 max-w-xl">
               Draw custom routes through construction sites, farms, and unmapped areas.
               Share a link. Anyone can follow with live GPS — no app or login needed.
