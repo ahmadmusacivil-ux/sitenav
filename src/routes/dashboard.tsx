@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Share2, Trash2, MapPin, Check, Eye, Pin as PinIcon, User } from "lucide-react";
+import { Plus, Share2, Trash2, MapPin, Check, Eye, Pin as PinIcon, User, AlertTriangle, Clock } from "lucide-react";
 import { supabase, type SavedRoute } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import AppHeader from "@/components/AppHeader";
