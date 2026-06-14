@@ -285,7 +285,17 @@ function Dashboard() {
                     <div className="min-w-0">
                       <h3 className="font-semibold truncate">{r.name}</h3>
                       <p className="text-xs text-navy-400 flex items-center gap-2 flex-wrap">
-                        <span>{new Date(r.created_at).toLocaleDateString()}</span>
+                        <span>Created: {fmtDate(r.created_at)}</span>
+                        {(() => {
+                          const exp = expiryInfo(r);
+                          if (!exp) return null;
+                          return (
+                            <span className={`inline-flex items-center gap-1 ${exp.isExpired ? "text-red-400" : exp.isSoon ? "text-orange-400" : ""}`}>
+                              {exp.isExpired && <AlertTriangle className="w-3 h-3" />}
+                              Expires: {exp.text}
+                            </span>
+                          );
+                        })()}
                         <span className="inline-flex items-center gap-1">
                           <MapPin className="w-3 h-3" />
                           {Array.isArray(r.waypoints) ? r.waypoints.length : 0} pts
