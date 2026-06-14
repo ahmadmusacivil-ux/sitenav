@@ -191,7 +191,7 @@ function FollowerPage() {
     !expiresAt && createdAt
       ? now.getTime() - createdAt.getTime() > 30 * 24 * 60 * 60 * 1000
       : false;
-  const dateFmt = (d: Date) => d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  const dateFmt = (d: Date) => d.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">

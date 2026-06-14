@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Share2, Trash2, MapPin, Check, Eye, Pin as PinIcon, User } from "lucide-react";
+import { Plus, Share2, Trash2, MapPin, Check, Eye, Pin as PinIcon, User, AlertTriangle, Clock } from "lucide-react";
 import { supabase, type SavedRoute } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import AppHeader from "@/components/AppHeader";
@@ -24,6 +24,22 @@ function Dashboard() {
   const [sharedRoutes, setSharedRoutes] = useState<SavedRoute[] | null>(null);
   const [tab, setTab] = useState<"mine" | "shared">(search.tab ?? "mine");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const fmtDate = (s: string | null | undefined) => {
+    if (!s) return "";
+    const d = new Date(s);
+    return d.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
+  };
+
+  const expiryInfo = (r: SavedRoute) => {
+    if (!r.expires_at) return null;
+    const expires = new Date(r.expires_at + "T23:59:59");
+    const now = new Date();
+    const isExpired = expires.getTime() < now.getTime();
+    const daysLeft = Math.ceil((expires.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    const isSoon = !isExpired && daysLeft <= 3;
+    return { isExpired, isSoon, daysLeft, text: fmtDate(r.expires_at) };
+  };
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
@@ -190,7 +206,17 @@ function Dashboard() {
                   <div className="min-w-0">
                     <h3 className="font-semibold truncate">{r.name}</h3>
                     <p className="text-xs text-navy-400 flex items-center gap-2 flex-wrap">
-                      <span>{new Date(r.created_at).toLocaleDateString()}</span>
+                      <span>Created: {fmtDate(r.created_at)}</span>
+                      {(() => {
+                        const exp = expiryInfo(r);
+                        if (!exp) return null;
+                        return (
+                          <span className={`inline-flex items-center gap-1 ${exp.isExpired ? "text-red-400" : exp.isSoon ? "text-orange-400" : ""}`}>
+                            {exp.isExpired && <AlertTriangle className="w-3 h-3" />}
+                            Expires: {exp.text}
+                          </span>
+                        );
+                      })()}
                       <span className="inline-flex items-center gap-1">
                         <MapPin className="w-3 h-3" />
                         {Array.isArray(r.waypoints) ? r.waypoints.length : 0} pts
@@ -259,7 +285,17 @@ function Dashboard() {
                     <div className="min-w-0">
                       <h3 className="font-semibold truncate">{r.name}</h3>
                       <p className="text-xs text-navy-400 flex items-center gap-2 flex-wrap">
-                        <span>{new Date(r.created_at).toLocaleDateString()}</span>
+                        <span>Created: {fmtDate(r.created_at)}</span>
+                        {(() => {
+                          const exp = expiryInfo(r);
+                          if (!exp) return null;
+                          return (
+                            <span className={`inline-flex items-center gap-1 ${exp.isExpired ? "text-red-400" : exp.isSoon ? "text-orange-400" : ""}`}>
+                              {exp.isExpired && <AlertTriangle className="w-3 h-3" />}
+                              Expires: {exp.text}
+                            </span>
+                          );
+                        })()}
                         <span className="inline-flex items-center gap-1">
                           <MapPin className="w-3 h-3" />
                           {Array.isArray(r.waypoints) ? r.waypoints.length : 0} pts
