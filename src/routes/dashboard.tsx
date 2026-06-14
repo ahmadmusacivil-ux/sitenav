@@ -25,6 +25,22 @@ function Dashboard() {
   const [tab, setTab] = useState<"mine" | "shared">(search.tab ?? "mine");
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  const fmtDate = (s: string | null | undefined) => {
+    if (!s) return "";
+    const d = new Date(s);
+    return d.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
+  };
+
+  const expiryInfo = (r: SavedRoute) => {
+    if (!r.expires_at) return null;
+    const expires = new Date(r.expires_at + "T23:59:59");
+    const now = new Date();
+    const isExpired = expires.getTime() < now.getTime();
+    const daysLeft = Math.ceil((expires.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    const isSoon = !isExpired && daysLeft <= 3;
+    return { isExpired, isSoon, daysLeft, text: fmtDate(r.expires_at) };
+  };
+
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
   }, [user, loading, navigate]);
