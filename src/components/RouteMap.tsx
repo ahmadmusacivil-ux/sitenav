@@ -363,6 +363,22 @@ export default function RouteMap({
   onInsertWaypoint,
 }: RouteMapProps) {
   const mapRef = useRef<L.Map | null>(null);
+  const compassHeading = useDeviceHeading();
+  // Fallback when the device has no compass: point at the next waypoint.
+  let gpsHeading: number | null = compassHeading;
+  if (gpsHeading == null && gpsPosition) {
+    const leg = activeDirection === "out" && exitWaypoints.length > 1 ? exitWaypoints : waypoints;
+    if (leg.length > 0) {
+      let nearest = 0;
+      let best = Infinity;
+      for (let i = 0; i < leg.length; i++) {
+        const d = (leg[i].lat - gpsPosition.lat) ** 2 + (leg[i].lng - gpsPosition.lng) ** 2;
+        if (d < best) { best = d; nearest = i; }
+      }
+      const target = leg[Math.min(nearest + 1, leg.length - 1)];
+      gpsHeading = bearing(gpsPosition, target);
+    }
+  }
   const handleClick = useCallback(
     (e: L.LeafletMouseEvent) => {
       if (editMode) return;
