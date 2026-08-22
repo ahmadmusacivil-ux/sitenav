@@ -9,7 +9,7 @@ const SCREENS = [
     title: "Welcome to LOST",
     text: "Create custom GPS routes on unmapped sites. Share them. Follow them.",
     img: img1,
-    alt: "Simple map with an orange route drawn across five waypoints",
+    alt: "Aerial view of a construction site with an orange GPS route from the site entry to a destination pin",
     button: "Next",
   },
   {
