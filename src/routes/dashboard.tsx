@@ -25,6 +25,21 @@ function Dashboard() {
   const [sharedRoutes, setSharedRoutes] = useState<SavedRoute[] | null>(null);
   const [tab, setTab] = useState<"mine" | "shared">(search.tab ?? "mine");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    if (!user || typeof window === "undefined") return;
+    const key = `lost:onboarded:${user.id}`;
+    if (!localStorage.getItem(key)) setShowOnboarding(true);
+  }, [user]);
+
+  const closeOnboarding = (goCreate: boolean) => {
+    if (user && typeof window !== "undefined") {
+      localStorage.setItem(`lost:onboarded:${user.id}`, "1");
+    }
+    setShowOnboarding(false);
+    if (goCreate) navigate({ to: "/creator" });
+  };
 
   const fmtDate = (s: string | null | undefined) => {
     if (!s) return "";
@@ -139,6 +154,9 @@ function Dashboard() {
 
   return (
     <div className="min-h-screen bg-navy-900 text-white flex flex-col">
+      {showOnboarding && (
+        <Onboarding onFinish={() => closeOnboarding(true)} onSkip={() => closeOnboarding(false)} />
+      )}
       <AppHeader title="Dashboard" />
       <main className="flex-1 px-4 sm:px-6 py-8 max-w-5xl w-full mx-auto">
         <div className="flex items-center justify-between gap-4 mb-8">
