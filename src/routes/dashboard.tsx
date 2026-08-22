@@ -5,6 +5,7 @@ import { supabase, type SavedRoute } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import AppHeader from "@/components/AppHeader";
 import SiteFooter from "@/components/SiteFooter";
+import Onboarding from "@/components/Onboarding";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [{ title: "Your Routes — LOST" }] }),
