@@ -557,7 +557,12 @@ export default function RouteMap({
         </Marker>
       ))}
       {gpsPosition && (
-        <Marker position={[gpsPosition.lat, gpsPosition.lng]} icon={createGpsIcon()} />
+        <Marker
+          position={[gpsPosition.lat, gpsPosition.lng]}
+          icon={createGpsIcon(gpsHeading)}
+          interactive={false}
+          zIndexOffset={1000}
+        />
       )}
     </MapContainer>
   );
