@@ -41,13 +41,70 @@ function createMarkerIcon(
   });
 }
 
-function createGpsIcon() {
+const GPS_ARROW_COLOR = "#185FA5";
+
+/** Upward-pointing arrow (chevron-style triangle) centred on the dot. */
+function arrowPath(height: number) {
+  const halfW = height * 0.42;
+  const apexY = 50 - height / 2;
+  const baseY = 50 + height / 2;
+  return `M 50 ${apexY} L ${50 + halfW} ${baseY} L 50 ${baseY - height * 0.28} L ${50 - halfW} ${baseY} Z`;
+}
+
+function createGpsIcon(heading: number | null) {
+  const rot = heading == null ? null : Math.round(heading);
+  const arrows =
+    rot == null
+      ? ""
+      : `<g transform="rotate(${rot} 50 50)" fill="${GPS_ARROW_COLOR}">
+           <path d="${arrowPath(35)}" opacity="0.3"/>
+           <path d="${arrowPath(24)}" opacity="0.5"/>
+           <path d="${arrowPath(14)}" opacity="1"/>
+         </g>`;
   return L.divIcon({
     className: "gps-marker",
-    html: '<span class="gps-pulse"></span><span class="gps-dot"></span>',
-    iconSize: [22, 22],
-    iconAnchor: [11, 11],
+    html: `<svg width="100" height="100" viewBox="0 0 100 100" class="gps-svg">
+        <circle cx="50" cy="50" r="12" fill="${GPS_ARROW_COLOR}" opacity="0.2"/>
+        ${arrows}
+        <circle class="gps-core" cx="50" cy="50" r="6" fill="#3b82f6" stroke="#fff" stroke-width="1"/>
+      </svg>`,
+    iconSize: [100, 100],
+    iconAnchor: [50, 50],
   });
+}
+
+function bearing(from: { lat: number; lng: number }, to: { lat: number; lng: number }) {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const φ1 = toRad(from.lat);
+  const φ2 = toRad(to.lat);
+  const Δλ = toRad(to.lng - from.lng);
+  const y = Math.sin(Δλ) * Math.cos(φ2);
+  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+  return (Math.atan2(y, x) * 180) / Math.PI;
+}
+
+/** Device compass heading in degrees (0 = north), or null when unavailable. */
+function useDeviceHeading() {
+  const [heading, setHeading] = useState<number | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onOrient = (e: DeviceOrientationEvent) => {
+      const webkit = (e as DeviceOrientationEvent & { webkitCompassHeading?: number })
+        .webkitCompassHeading;
+      if (typeof webkit === "number" && !Number.isNaN(webkit)) {
+        setHeading(webkit);
+      } else if (e.absolute && typeof e.alpha === "number") {
+        setHeading((360 - e.alpha) % 360);
+      }
+    };
+    window.addEventListener("deviceorientationabsolute", onOrient as EventListener);
+    window.addEventListener("deviceorientation", onOrient as EventListener);
+    return () => {
+      window.removeEventListener("deviceorientationabsolute", onOrient as EventListener);
+      window.removeEventListener("deviceorientation", onOrient as EventListener);
+    };
+  }, []);
+  return heading;
 }
 
 function createPinIcon(color: string) {
