@@ -369,6 +369,12 @@ export type RouteMapProps = {
   onMoveWaypoint?: (leg: "entry" | "exit", id: number, lat: number, lng: number) => void;
   onDeleteWaypoint?: (leg: "entry" | "exit", id: number) => void;
   onInsertWaypoint?: (leg: "entry" | "exit", afterIndex: number, lat: number, lng: number) => void;
+  /** Built-in icon id or data URL shown as the "you are here" marker. */
+  vehicleIcon?: string | null;
+  /** Show rotation + compass controls (view-only pages). */
+  allowRotation?: boolean;
+  /** Click a background route line. */
+  onSelectBackgroundRoute?: (id: string) => void;
 };
 
 export default function RouteMap({
