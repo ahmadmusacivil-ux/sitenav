@@ -51,7 +51,22 @@ function arrowPath(height: number) {
   return `M 50 ${apexY} L ${50 + halfW} ${baseY} L 50 ${baseY - height * 0.28} L ${50 - halfW} ${baseY} Z`;
 }
 
-function createGpsIcon(heading: number | null) {
+function vehicleMarkup(icon: string | null | undefined, rot: number) {
+  if (!icon || icon === "dot") return "";
+  const spin = `rotate(${rot} 50 50)`;
+  if (isCustomIcon(icon)) {
+    return `<g transform="${spin}"><image href="${icon}" x="32" y="32" width="36" height="36" preserveAspectRatio="xMidYMid meet"/></g>`;
+  }
+  const body = VEHICLE_ICON_SVG[icon as keyof typeof VEHICLE_ICON_SVG];
+  if (!body) return "";
+  // 24x24 icon body scaled up and centred on the dot.
+  return `<g transform="${spin} translate(32 32) scale(1.5)" fill="none" stroke="#fff" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" paint-order="stroke">${body}</g>
+          <g transform="${spin} translate(32 32) scale(1.5)" fill="none" stroke="${GPS_ARROW_COLOR}" stroke-width="1.6"
+            stroke-linecap="round" stroke-linejoin="round">${body}</g>`;
+}
+
+function createGpsIcon(heading: number | null, vehicleIcon?: string | null) {
   const rot = heading == null ? null : Math.round(heading);
   const arrows =
     rot == null
@@ -61,12 +76,15 @@ function createGpsIcon(heading: number | null) {
            <path d="${arrowPath(24)}" opacity="0.5"/>
            <path d="${arrowPath(14)}" opacity="1"/>
          </g>`;
+  const vehicle = vehicleMarkup(vehicleIcon, rot ?? 0);
   return L.divIcon({
     className: "gps-marker",
     html: `<svg width="100" height="100" viewBox="0 0 100 100" class="gps-svg">
         <circle cx="50" cy="50" r="12" fill="${GPS_ARROW_COLOR}" opacity="0.2"/>
         ${arrows}
-        <circle class="gps-core" cx="50" cy="50" r="6" fill="#3b82f6" stroke="#fff" stroke-width="1"/>
+        ${vehicle
+          ? vehicle
+          : `<circle class="gps-core" cx="50" cy="50" r="6" fill="#3b82f6" stroke="#fff" stroke-width="1"/>`}
       </svg>`,
     iconSize: [100, 100],
     iconAnchor: [50, 50],
