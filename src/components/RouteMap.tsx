@@ -397,8 +397,12 @@ export default function RouteMap({
   onMoveWaypoint,
   onDeleteWaypoint,
   onInsertWaypoint,
+  vehicleIcon,
+  allowRotation = false,
+  onSelectBackgroundRoute,
 }: RouteMapProps) {
   const mapRef = useRef<L.Map | null>(null);
+  const [rotation, setRotation] = useState(0);
   const compassHeading = useDeviceHeading();
   // Fallback when the device has no compass: point at the next waypoint.
   let gpsHeading: number | null = compassHeading;
