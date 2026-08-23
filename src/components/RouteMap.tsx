@@ -269,7 +269,13 @@ function routeBounds(r: BackgroundRoute) {
   return L.latLngBounds([minLat, minLng], [maxLat, maxLng]);
 }
 
-function BackgroundRoutes({ routes }: { routes: BackgroundRoute[] }) {
+function BackgroundRoutes({
+  routes,
+  onSelect,
+}: {
+  routes: BackgroundRoute[];
+  onSelect?: (id: string) => void;
+}) {
   const map = useMap();
   const [bounds, setBounds] = useState<L.LatLngBounds | null>(() => {
     try { return map.getBounds(); } catch { return null; }
