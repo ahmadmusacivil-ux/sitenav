@@ -295,19 +295,18 @@ function BackgroundRoutes({
       {visible.map((r) => {
         const entry = smoothPath(r.entry);
         const exit = r.exit ? smoothPath(r.exit) : [];
+        const opts = {
+          color: r.color ?? BG_COLOR,
+          weight: 6,
+          opacity: r.opacity ?? 0.3,
+          lineCap: "round" as const,
+          lineJoin: "round" as const,
+        };
+        const handlers = onSelect ? { click: () => onSelect(r.id) } : undefined;
         return (
           <Fragment key={r.id}>
             {entry.length > 1 && (
-              <Polyline
-                positions={entry}
-                pathOptions={{
-                  color: BG_COLOR,
-                  weight: 6,
-                  opacity: 0.3,
-                  lineCap: "round",
-                  lineJoin: "round",
-                }}
-              >
+              <Polyline positions={entry} pathOptions={opts} eventHandlers={handlers}>
                 {r.name && (
                   <Tooltip sticky direction="top" opacity={1} className="bg-route-tooltip">
                     {r.name}
@@ -316,16 +315,7 @@ function BackgroundRoutes({
               </Polyline>
             )}
             {exit.length > 1 && (
-              <Polyline
-                positions={exit}
-                pathOptions={{
-                  color: BG_COLOR,
-                  weight: 6,
-                  opacity: 0.3,
-                  lineCap: "round",
-                  lineJoin: "round",
-                }}
-              >
+              <Polyline positions={exit} pathOptions={opts} eventHandlers={handlers}>
                 {r.name && (
                   <Tooltip sticky direction="top" opacity={1} className="bg-route-tooltip">
                     {r.name}
