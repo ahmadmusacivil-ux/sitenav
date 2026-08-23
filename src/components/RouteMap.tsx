@@ -239,7 +239,22 @@ export type BackgroundRoute = {
   entry: [number, number][];
   exit?: [number, number][];
   routeType?: RouteType;
+  /** Distinct colour so several site routes can be told apart. */
+  color?: string;
+  opacity?: number;
 };
+
+/** Palette used when several routes share one map. */
+export const ROUTE_PALETTE = [
+  "#38bdf8",
+  "#a78bfa",
+  "#f472b6",
+  "#facc15",
+  "#34d399",
+  "#fb923c",
+  "#f87171",
+  "#22d3ee",
+];
 
 function routeBounds(r: BackgroundRoute) {
   const pts = [...r.entry, ...(r.exit ?? [])];
