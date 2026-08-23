@@ -46,4 +46,13 @@ export type SavedRoute = {
   share_token: string;
   created_at: string;
   expires_at?: string | null;
+  /** Site / project this route belongs to (groups routes on one map). */
+  site?: string | null;
+  /** Vehicle class the route is intended for: "LV", "HV" or custom text. */
+  vehicle_type?: string | null;
+  /** Built-in icon id ("car" | "truck" | "van" | "dot") or an uploaded data URL. */
+  vehicle_icon?: string | null;
 };
+
+export const ROUTE_COLUMNS =
+  "id,user_id,name,waypoints,exit_waypoints,route_type,pins,share_token,created_at,expires_at,site,vehicle_type,vehicle_icon";

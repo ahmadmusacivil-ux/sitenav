@@ -4,6 +4,7 @@ import L from "leaflet";
 import "leaflet-polylinedecorator";
 import { type Pin, PIN_COLORS } from "@/lib/pins";
 import { type SegmentType, type RouteType } from "@/lib/supabase";
+import { VEHICLE_ICON_SVG, isCustomIcon } from "@/lib/vehicles";
 
 export interface Waypoint {
   id: number;
@@ -51,7 +52,22 @@ function arrowPath(height: number) {
   return `M 50 ${apexY} L ${50 + halfW} ${baseY} L 50 ${baseY - height * 0.28} L ${50 - halfW} ${baseY} Z`;
 }
 
-function createGpsIcon(heading: number | null) {
+function vehicleMarkup(icon: string | null | undefined, rot: number) {
+  if (!icon || icon === "dot") return "";
+  const spin = `rotate(${rot} 50 50)`;
+  if (isCustomIcon(icon)) {
+    return `<g transform="${spin}"><image href="${icon}" x="32" y="32" width="36" height="36" preserveAspectRatio="xMidYMid meet"/></g>`;
+  }
+  const body = VEHICLE_ICON_SVG[icon as keyof typeof VEHICLE_ICON_SVG];
+  if (!body) return "";
+  // 24x24 icon body scaled up and centred on the dot.
+  return `<g transform="${spin} translate(32 32) scale(1.5)" fill="none" stroke="#fff" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" paint-order="stroke">${body}</g>
+          <g transform="${spin} translate(32 32) scale(1.5)" fill="none" stroke="${GPS_ARROW_COLOR}" stroke-width="1.6"
+            stroke-linecap="round" stroke-linejoin="round">${body}</g>`;
+}
+
+function createGpsIcon(heading: number | null, vehicleIcon?: string | null) {
   const rot = heading == null ? null : Math.round(heading);
   const arrows =
     rot == null
@@ -61,12 +77,15 @@ function createGpsIcon(heading: number | null) {
            <path d="${arrowPath(24)}" opacity="0.5"/>
            <path d="${arrowPath(14)}" opacity="1"/>
          </g>`;
+  const vehicle = vehicleMarkup(vehicleIcon, rot ?? 0);
   return L.divIcon({
     className: "gps-marker",
     html: `<svg width="100" height="100" viewBox="0 0 100 100" class="gps-svg">
         <circle cx="50" cy="50" r="12" fill="${GPS_ARROW_COLOR}" opacity="0.2"/>
         ${arrows}
-        <circle class="gps-core" cx="50" cy="50" r="6" fill="#3b82f6" stroke="#fff" stroke-width="1"/>
+        ${vehicle
+          ? vehicle
+          : `<circle class="gps-core" cx="50" cy="50" r="6" fill="#3b82f6" stroke="#fff" stroke-width="1"/>`}
       </svg>`,
     iconSize: [100, 100],
     iconAnchor: [50, 50],
@@ -239,7 +258,22 @@ export type BackgroundRoute = {
   entry: [number, number][];
   exit?: [number, number][];
   routeType?: RouteType;
+  /** Distinct colour so several site routes can be told apart. */
+  color?: string;
+  opacity?: number;
 };
+
+/** Palette used when several routes share one map. */
+export const ROUTE_PALETTE = [
+  "#38bdf8",
+  "#a78bfa",
+  "#f472b6",
+  "#facc15",
+  "#34d399",
+  "#fb923c",
+  "#f87171",
+  "#22d3ee",
+];
 
 function routeBounds(r: BackgroundRoute) {
   const pts = [...r.entry, ...(r.exit ?? [])];
@@ -254,7 +288,13 @@ function routeBounds(r: BackgroundRoute) {
   return L.latLngBounds([minLat, minLng], [maxLat, maxLng]);
 }
 
-function BackgroundRoutes({ routes }: { routes: BackgroundRoute[] }) {
+function BackgroundRoutes({
+  routes,
+  onSelect,
+}: {
+  routes: BackgroundRoute[];
+  onSelect?: (id: string) => void;
+}) {
   const map = useMap();
   const [bounds, setBounds] = useState<L.LatLngBounds | null>(() => {
     try { return map.getBounds(); } catch { return null; }
@@ -274,19 +314,18 @@ function BackgroundRoutes({ routes }: { routes: BackgroundRoute[] }) {
       {visible.map((r) => {
         const entry = smoothPath(r.entry);
         const exit = r.exit ? smoothPath(r.exit) : [];
+        const opts = {
+          color: r.color ?? BG_COLOR,
+          weight: 6,
+          opacity: r.opacity ?? 0.3,
+          lineCap: "round" as const,
+          lineJoin: "round" as const,
+        };
+        const handlers = onSelect ? { click: () => onSelect(r.id) } : undefined;
         return (
           <Fragment key={r.id}>
             {entry.length > 1 && (
-              <Polyline
-                positions={entry}
-                pathOptions={{
-                  color: BG_COLOR,
-                  weight: 6,
-                  opacity: 0.3,
-                  lineCap: "round",
-                  lineJoin: "round",
-                }}
-              >
+              <Polyline positions={entry} pathOptions={opts} eventHandlers={handlers}>
                 {r.name && (
                   <Tooltip sticky direction="top" opacity={1} className="bg-route-tooltip">
                     {r.name}
@@ -295,16 +334,7 @@ function BackgroundRoutes({ routes }: { routes: BackgroundRoute[] }) {
               </Polyline>
             )}
             {exit.length > 1 && (
-              <Polyline
-                positions={exit}
-                pathOptions={{
-                  color: BG_COLOR,
-                  weight: 6,
-                  opacity: 0.3,
-                  lineCap: "round",
-                  lineJoin: "round",
-                }}
-              >
+              <Polyline positions={exit} pathOptions={opts} eventHandlers={handlers}>
                 {r.name && (
                   <Tooltip sticky direction="top" opacity={1} className="bg-route-tooltip">
                     {r.name}
@@ -339,6 +369,12 @@ export type RouteMapProps = {
   onMoveWaypoint?: (leg: "entry" | "exit", id: number, lat: number, lng: number) => void;
   onDeleteWaypoint?: (leg: "entry" | "exit", id: number) => void;
   onInsertWaypoint?: (leg: "entry" | "exit", afterIndex: number, lat: number, lng: number) => void;
+  /** Built-in icon id or data URL shown as the "you are here" marker. */
+  vehicleIcon?: string | null;
+  /** Show rotation + compass controls (view-only pages). */
+  allowRotation?: boolean;
+  /** Click a background route line. */
+  onSelectBackgroundRoute?: (id: string) => void;
 };
 
 export default function RouteMap({
@@ -361,8 +397,12 @@ export default function RouteMap({
   onMoveWaypoint,
   onDeleteWaypoint,
   onInsertWaypoint,
+  vehicleIcon,
+  allowRotation = false,
+  onSelectBackgroundRoute,
 }: RouteMapProps) {
   const mapRef = useRef<L.Map | null>(null);
+  const [rotation, setRotation] = useState(0);
   const compassHeading = useDeviceHeading();
   // Fallback when the device has no compass: point at the next waypoint.
   let gpsHeading: number | null = compassHeading;
