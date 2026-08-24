@@ -262,6 +262,8 @@ export type BackgroundRoute = {
   /** Distinct colour so several site routes can be told apart. */
   color?: string;
   opacity?: number;
+  /** Vehicle class, used for filtering in the creator. */
+  vehicleType?: string;
 };
 
 /** Palette used when several routes share one map. */

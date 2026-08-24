@@ -408,6 +408,11 @@ function CreatorPage() {
     setShareUrl(null);
   };
 
+  const visibleBackgroundRoutes =
+    vehicleFilter === "all"
+      ? backgroundRoutes
+      : backgroundRoutes.filter((r) => (r.vehicleType ?? "") === vehicleFilter);
+
   const openSavePrompt = () => {
     if (!canSave) return;
     // When editing an existing route, skip the name prompt entirely and
@@ -807,6 +812,37 @@ function CreatorPage() {
               </button>
             </div>
           )}
+          {/* Vehicle class for this route + filter for other site routes */}
+          <div className="inline-flex items-center gap-1">
+            <select
+              value={vehicleType}
+              onChange={(e) => setVehicleType(e.target.value)}
+              title="Vehicle class this route is intended for"
+              className="px-2 py-1 text-xs rounded-md bg-navy-800/80 border border-navy-700 text-white focus:outline-none focus:border-orange-500"
+            >
+              {VEHICLE_PRESETS.map((v) => (
+                <option key={v.value} value={v.value}>
+                  {v.label}
+                </option>
+              ))}
+              {!VEHICLE_PRESETS.some((v) => v.value === vehicleType) && (
+                <option value={vehicleType}>{vehicleType}</option>
+              )}
+            </select>
+            <select
+              value={vehicleFilter}
+              onChange={(e) => setVehicleFilter(e.target.value)}
+              title="Filter the other routes shown on the map"
+              className="px-2 py-1 text-xs rounded-md bg-navy-800/80 border border-navy-700 text-navy-200 focus:outline-none focus:border-orange-500"
+            >
+              <option value="all">All vehicles</option>
+              {VEHICLE_PRESETS.map((v) => (
+                <option key={v.value} value={v.value}>
+                  {v.value} only
+                </option>
+              ))}
+            </select>
+          </div>
           {/* In/Out direction selector — only for One-Way */}
           {routeType === "one_way" && !editMode && (
             <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
@@ -1080,6 +1116,58 @@ function CreatorPage() {
               className="w-full px-3 py-2.5 rounded-lg bg-navy-950 border border-navy-700 text-white placeholder-navy-500 focus:outline-none focus:border-orange-500"
               placeholder="e.g. North gate to office trailer"
             />
+            <label className="block mt-3 text-xs font-medium text-navy-300">Site / project</label>
+            <input
+              value={site}
+              onChange={(e) => setSite(e.target.value)}
+              className="mt-1 w-full px-3 py-2 rounded-lg bg-navy-950 border border-navy-700 text-white placeholder-navy-500 focus:outline-none focus:border-orange-500"
+              placeholder="e.g. Northgate Yard"
+            />
+            <label className="block mt-3 text-xs font-medium text-navy-300">Vehicle class</label>
+            <input
+              value={vehicleType}
+              onChange={(e) => setVehicleType(e.target.value)}
+              className="mt-1 w-full px-3 py-2 rounded-lg bg-navy-950 border border-navy-700 text-white placeholder-navy-500 focus:outline-none focus:border-orange-500"
+              placeholder="LV, HV or a custom class"
+            />
+            <label className="block mt-3 text-xs font-medium text-navy-300">Follower icon</label>
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              {VEHICLE_ICON_OPTIONS.map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  onClick={() => setVehicleIcon(o.id)}
+                  className={`px-2.5 py-1 text-xs rounded-md border ${
+                    vehicleIcon === o.id
+                      ? "bg-orange-500 border-orange-500 text-white"
+                      : "bg-navy-950 border-navy-700 text-navy-200 hover:text-white"
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
+              <label className={`px-2.5 py-1 text-xs rounded-md border cursor-pointer ${
+                isCustomIcon(vehicleIcon)
+                  ? "bg-orange-500 border-orange-500 text-white"
+                  : "bg-navy-950 border-navy-700 text-navy-200 hover:text-white"
+              }`}>
+                Upload
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    try {
+                      setVehicleIcon(await fileToIconDataUrl(f));
+                    } catch {
+                      toast.error("Could not read that image");
+                    }
+                  }}
+                />
+              </label>
+            </div>
             {errorMsg && <p className="mt-2 text-red-400 text-xs">{errorMsg}</p>}
             <div className="mt-5 flex gap-2 justify-end">
               <button
