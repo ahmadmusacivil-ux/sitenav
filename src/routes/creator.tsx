@@ -23,7 +23,13 @@ import {
   Eraser,
 } from "lucide-react";
 import { ClientOnlyMap } from "@/components/ClientOnlyMap";
-import { type BackgroundRoute } from "@/components/RouteMap";
+import { type BackgroundRoute, ROUTE_PALETTE } from "@/components/RouteMap";
+import {
+  VEHICLE_PRESETS,
+  VEHICLE_ICON_OPTIONS,
+  fileToIconDataUrl,
+  isCustomIcon,
+} from "@/lib/vehicles";
 import LocationSearch from "@/components/LocationSearch";
 import { useAuth } from "@/lib/auth";
 import { supabase, type RouteType, type SavedRoute, type SegmentType, normalizeRouteType } from "@/lib/supabase";
@@ -51,7 +57,7 @@ interface Waypoint {
 }
 
 const routeSelectColumns =
-  "id,user_id,name,waypoints,exit_waypoints,route_type,pins,share_token,created_at,expires_at";
+  "id,user_id,name,waypoints,exit_waypoints,route_type,pins,share_token,created_at,expires_at,site,vehicle_type,vehicle_icon";
 
 function defaultExpiryISO(): string {
   const d = new Date();
@@ -82,6 +88,10 @@ function CreatorPage() {
   const [namePromptOpen, setNamePromptOpen] = useState(false);
   const [routeName, setRouteName] = useState("");
   const [expiresAt, setExpiresAt] = useState<string>(() => defaultExpiryISO());
+  const [site, setSite] = useState("");
+  const [vehicleType, setVehicleType] = useState<string>("LV");
+  const [vehicleIcon, setVehicleIcon] = useState<string>("dot");
+  const [vehicleFilter, setVehicleFilter] = useState<string>("all");
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [gpsPos, setGpsPos] = useState<{ lat: number; lng: number } | null>(null);
@@ -208,7 +218,7 @@ function CreatorPage() {
     let cancelled = false;
     supabase
       .from("routes")
-      .select("id,name,waypoints,exit_waypoints,route_type")
+      .select("id,name,waypoints,exit_waypoints,route_type,site,vehicle_type")
       .eq("user_id", user.id)
       .then(({ data }) => {
         if (cancelled || !data) return;
@@ -218,12 +228,16 @@ function CreatorPage() {
           waypoints: { lat: number; lng: number; t?: SegmentType }[] | null;
           exit_waypoints: { lat: number; lng: number; t?: SegmentType }[] | null;
           route_type: string | null;
+          site: string | null;
+          vehicle_type: string | null;
         }[];
         const bg: BackgroundRoute[] = rows
           .filter((r) => r.id !== editId)
-          .map((r) => ({
+          .map((r, i) => ({
             id: r.id,
-            name: r.name,
+            name: r.vehicle_type ? `${r.name} · ${r.vehicle_type}` : r.name,
+            color: ROUTE_PALETTE[i % ROUTE_PALETTE.length],
+            vehicleType: r.vehicle_type ?? undefined,
             entry: (r.waypoints ?? []).map((w) => [w.lat, w.lng] as [number, number]),
             exit: (r.exit_waypoints ?? []).map((w) => [w.lat, w.lng] as [number, number]),
             routeType: normalizeRouteType(r.route_type),
@@ -277,6 +291,9 @@ function CreatorPage() {
               pins: Pin[] | null;
               share_token: string;
               expires_at: string | null;
+              site: string | null;
+              vehicle_type: string | null;
+              vehicle_icon: string | null;
             }
           | null;
         if (r) {
@@ -302,6 +319,9 @@ function CreatorPage() {
           );
           setRouteName(r.name);
           setExpiresAt(r.expires_at ?? "");
+          setSite(r.site ?? "");
+          setVehicleType(r.vehicle_type ?? "LV");
+          setVehicleIcon(r.vehicle_icon ?? "dot");
           setEditingId(r.id);
           setEditingShareToken(r.share_token);
         }
@@ -422,6 +442,9 @@ function CreatorPage() {
         note: p.note ?? null,
       })),
       expires_at: expiresAt ? expiresAt : null,
+      site: site.trim() ? site.trim() : null,
+      vehicle_type: vehicleType.trim() ? vehicleType.trim() : null,
+      vehicle_icon: vehicleIcon || "dot",
     };
     if (editingId) {
       // Debug: confirm the row exists and the logged-in user owns it before
@@ -887,13 +910,14 @@ function CreatorPage() {
           gpsPosition={gpsPos}
           fitToWaypoints={Boolean(editId) && !gpsFlewRef.current}
           flyTo={flyTarget}
-          backgroundRoutes={backgroundRoutes}
+          backgroundRoutes={visibleBackgroundRoutes}
           hideWaypointMarkers={recording}
           editMode={editMode}
           editTool={editTool}
           onMoveWaypoint={handleMoveWaypoint}
           onDeleteWaypoint={handleDeleteWaypoint}
           onInsertWaypoint={handleInsertWaypoint}
+          vehicleIcon={vehicleIcon}
         />
         <LocationSearch
           onSelect={(lat, lng) => setFlyTarget({ lat, lng, zoom: 17, seq: Date.now() })}
