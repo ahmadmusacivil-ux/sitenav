@@ -659,7 +659,7 @@ export default function RouteMap({
             <span className="absolute inset-x-0 bottom-0 text-[9px] font-semibold text-muted-foreground text-center leading-none">S</span>
             <span className="absolute inset-y-0 left-0 flex items-center text-[9px] font-semibold text-muted-foreground leading-none">W</span>
             <span className="absolute inset-y-0 right-0 flex items-center text-[9px] font-semibold text-muted-foreground leading-none">E</span>
-            <Navigation className="absolute inset-0 m-auto h-3.5 w-3.5 text-primary" />
+            <NavigationIcon className="absolute inset-0 m-auto h-3.5 w-3.5 text-primary" />
           </span>
         </button>
         <button
