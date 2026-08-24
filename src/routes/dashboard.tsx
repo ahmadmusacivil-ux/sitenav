@@ -137,6 +137,34 @@ function Dashboard() {
   const shareUrl = (token: string) =>
     typeof window !== "undefined" ? `${window.location.origin}/route/${token}` : "";
 
+  // Group "My Routes" by site/project so a yard's routes stay together.
+  const groupedRoutes = (() => {
+    const map = new Map<string, SavedRoute[]>();
+    for (const r of routes ?? []) {
+      const key = (r.site ?? "").trim() || "Ungrouped";
+      const arr = map.get(key);
+      if (arr) arr.push(r);
+      else map.set(key, [r]);
+    }
+    return [...map.entries()]
+      .sort((a, b) => (a[0] === "Ungrouped" ? 1 : b[0] === "Ungrouped" ? -1 : a[0].localeCompare(b[0])))
+      .map(([site, list]) => ({ site, routes: list }));
+  })();
+
+  const siteMapUrl = (token: string) =>
+    typeof window !== "undefined" ? `${window.location.origin}/site/${token}` : "";
+
+  const handleShareSite = async (g: { site: string; routes: SavedRoute[] }) => {
+    const url = siteMapUrl(g.routes[0].share_token);
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedId(`site:${g.site}`);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      window.prompt("Copy site map link:", url);
+    }
+  };
+
   const handleShare = async (r: SavedRoute) => {
     const url = shareUrl(r.share_token);
     try {
@@ -212,8 +240,30 @@ function Dashboard() {
             </Link>
           </div>
           ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {routes.map((r) => (
+          <div className="space-y-8">
+            {groupedRoutes.map((g) => (
+            <section key={g.site}>
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <h2 className="text-sm font-semibold text-navy-200 uppercase tracking-wide">
+                  {g.site}
+                  <span className="ml-2 text-navy-500 normal-case font-normal">
+                    {g.routes.length} route{g.routes.length === 1 ? "" : "s"}
+                  </span>
+                </h2>
+                <button
+                  onClick={() => handleShareSite(g)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-navy-700 hover:bg-navy-600 text-white rounded-lg"
+                  title="Share a link showing every route on this site"
+                >
+                  {copiedId === `site:${g.site}` ? (
+                    <><Check className="w-3.5 h-3.5" /> Copied</>
+                  ) : (
+                    <><Share2 className="w-3.5 h-3.5" /> Share site map</>
+                  )}
+                </button>
+              </div>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {g.routes.map((r) => (
               <div
                 key={r.id}
                 className="bg-navy-800/60 border border-navy-700 rounded-2xl p-5 hover:border-navy-600 transition-colors"
@@ -244,6 +294,11 @@ function Dashboard() {
                         <PinIcon className="w-3 h-3" />
                         {Array.isArray(r.pins) ? r.pins.length : 0} pins
                       </span>
+                      {r.vehicle_type && (
+                        <span className="px-1.5 py-0.5 rounded bg-navy-700 text-navy-100 font-medium">
+                          {r.vehicle_type}
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -278,6 +333,9 @@ function Dashboard() {
                   </button>
                 </div>
               </div>
+            ))}
+              </div>
+            </section>
             ))}
             </div>
           )
