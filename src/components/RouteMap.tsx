@@ -5,6 +5,7 @@ import "leaflet-polylinedecorator";
 import { type Pin, PIN_COLORS } from "@/lib/pins";
 import { type SegmentType, type RouteType } from "@/lib/supabase";
 import { VEHICLE_ICON_SVG, isCustomIcon } from "@/lib/vehicles";
+import { RotateCcw, RotateCw, Navigation as NavigationIcon } from "lucide-react";
 
 export interface Waypoint {
   id: number;
