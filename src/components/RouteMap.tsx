@@ -493,7 +493,7 @@ export default function RouteMap({
       {followGps && gpsPosition && <FollowGps position={gpsPosition} />}
       <FlyTo target={flyTo} />
       {backgroundRoutes && backgroundRoutes.length > 0 && (
-        <BackgroundRoutes routes={backgroundRoutes} />
+        <BackgroundRoutes routes={backgroundRoutes} onSelect={onSelectBackgroundRoute} />
       )}
       {/* Entry leg sub-polylines, coloured per movement type. */}
       {entrySegs.map((s, idx) => {
@@ -631,8 +631,8 @@ export default function RouteMap({
   return (
     <div className="absolute inset-0 overflow-hidden">
       <div
-        className="absolute inset-0 map-rotator"
-        style={{ transform: `rotate(${rotation}deg)` }}
+        className="absolute map-rotator"
+        style={{ inset: "-30%", transform: `rotate(${rotation}deg)` }}
       >
         {mapEl}
       </div>
