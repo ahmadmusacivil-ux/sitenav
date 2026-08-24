@@ -5,6 +5,7 @@ import "leaflet-polylinedecorator";
 import { type Pin, PIN_COLORS } from "@/lib/pins";
 import { type SegmentType, type RouteType } from "@/lib/supabase";
 import { VEHICLE_ICON_SVG, isCustomIcon } from "@/lib/vehicles";
+import { RotateCcw, RotateCw, Navigation as NavigationIcon } from "lucide-react";
 
 export interface Waypoint {
   id: number;
@@ -261,6 +262,8 @@ export type BackgroundRoute = {
   /** Distinct colour so several site routes can be told apart. */
   color?: string;
   opacity?: number;
+  /** Vehicle class, used for filtering in the creator. */
+  vehicleType?: string;
 };
 
 /** Palette used when several routes share one map. */
@@ -470,14 +473,16 @@ export default function RouteMap({
     onInsertWaypoint(leg, bestI, click.lat, click.lng);
   };
 
-  return (
+  const drawCursor = Boolean(onAddWaypoint) && !editMode && !pinMode;
+
+  const mapEl = (
     <MapContainer
       ref={mapRef}
       center={[-25.2744, 133.7751]}
       zoom={5}
       scrollWheelZoom
       zoomControl
-      className={`absolute inset-0 w-full h-full ${pinMode ? "cursor-pin" : ""}`}
+      className={`absolute inset-0 w-full h-full ${pinMode ? "cursor-pin" : drawCursor ? "cursor-draw" : ""}`}
     >
       <TileLayer
         url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
@@ -490,7 +495,7 @@ export default function RouteMap({
       {followGps && gpsPosition && <FollowGps position={gpsPosition} />}
       <FlyTo target={flyTo} />
       {backgroundRoutes && backgroundRoutes.length > 0 && (
-        <BackgroundRoutes routes={backgroundRoutes} />
+        <BackgroundRoutes routes={backgroundRoutes} onSelect={onSelectBackgroundRoute} />
       )}
       {/* Entry leg sub-polylines, coloured per movement type. */}
       {entrySegs.map((s, idx) => {
@@ -615,11 +620,59 @@ export default function RouteMap({
       {gpsPosition && (
         <Marker
           position={[gpsPosition.lat, gpsPosition.lng]}
-          icon={createGpsIcon(gpsHeading)}
+          icon={createGpsIcon(gpsHeading, vehicleIcon)}
           interactive={false}
           zIndexOffset={1000}
         />
       )}
     </MapContainer>
+  );
+
+  if (!allowRotation) return mapEl;
+
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      <div
+        className="absolute map-rotator"
+        style={{ inset: "-30%", transform: `rotate(${rotation}deg)` }}
+      >
+        {mapEl}
+      </div>
+      <div className="absolute right-3 bottom-24 z-[1000] flex flex-col items-center gap-2">
+        <button
+          type="button"
+          aria-label="Rotate map anticlockwise"
+          onClick={() => setRotation((r) => r - 15)}
+          className="h-9 w-9 rounded-full bg-background/90 border border-border shadow flex items-center justify-center text-foreground"
+        >
+          <RotateCcw className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          aria-label="Reset map to north up"
+          onClick={() => setRotation(0)}
+          className="h-11 w-11 rounded-full bg-background/90 border border-border shadow flex items-center justify-center"
+        >
+          <span
+            className="relative block h-7 w-7"
+            style={{ transform: `rotate(${rotation}deg)` }}
+          >
+            <span className="absolute inset-x-0 top-0 text-[9px] font-bold text-primary text-center leading-none">N</span>
+            <span className="absolute inset-x-0 bottom-0 text-[9px] font-semibold text-muted-foreground text-center leading-none">S</span>
+            <span className="absolute inset-y-0 left-0 flex items-center text-[9px] font-semibold text-muted-foreground leading-none">W</span>
+            <span className="absolute inset-y-0 right-0 flex items-center text-[9px] font-semibold text-muted-foreground leading-none">E</span>
+            <NavigationIcon className="absolute inset-0 m-auto h-3.5 w-3.5 text-primary" />
+          </span>
+        </button>
+        <button
+          type="button"
+          aria-label="Rotate map clockwise"
+          onClick={() => setRotation((r) => r + 15)}
+          className="h-9 w-9 rounded-full bg-background/90 border border-border shadow flex items-center justify-center text-foreground"
+        >
+          <RotateCw className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
   );
 }

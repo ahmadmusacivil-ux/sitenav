@@ -16,6 +16,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CreatorRouteImport } from './routes/creator'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SiteTokenRouteImport } from './routes/site.$token'
 import { Route as RoutesIdRouteImport } from './routes/routes.$id'
 import { Route as RouteTokenRouteImport } from './routes/route.$token'
 
@@ -54,6 +55,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SiteTokenRoute = SiteTokenRouteImport.update({
+  id: '/site/$token',
+  path: '/site/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RoutesIdRoute = RoutesIdRouteImport.update({
   id: '/routes/$id',
   path: '/routes/$id',
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/route/$token': typeof RouteTokenRoute
   '/routes/$id': typeof RoutesIdRoute
+  '/site/$token': typeof SiteTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/route/$token': typeof RouteTokenRoute
   '/routes/$id': typeof RoutesIdRoute
+  '/site/$token': typeof SiteTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -98,6 +106,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/route/$token': typeof RouteTokenRoute
   '/routes/$id': typeof RoutesIdRoute
+  '/site/$token': typeof SiteTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -111,6 +120,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/route/$token'
     | '/routes/$id'
+    | '/site/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/route/$token'
     | '/routes/$id'
+    | '/site/$token'
   id:
     | '__root__'
     | '/'
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/route/$token'
     | '/routes/$id'
+    | '/site/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -145,6 +157,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   RouteTokenRoute: typeof RouteTokenRoute
   RoutesIdRoute: typeof RoutesIdRoute
+  SiteTokenRoute: typeof SiteTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -198,6 +211,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/site/$token': {
+      id: '/site/$token'
+      path: '/site/$token'
+      fullPath: '/site/$token'
+      preLoaderRoute: typeof SiteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/routes/$id': {
       id: '/routes/$id'
       path: '/routes/$id'
@@ -225,6 +245,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   RouteTokenRoute: RouteTokenRoute,
   RoutesIdRoute: RoutesIdRoute,
+  SiteTokenRoute: SiteTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
