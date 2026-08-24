@@ -470,14 +470,16 @@ export default function RouteMap({
     onInsertWaypoint(leg, bestI, click.lat, click.lng);
   };
 
-  return (
+  const drawCursor = Boolean(onAddWaypoint) && !editMode && !pinMode;
+
+  const mapEl = (
     <MapContainer
       ref={mapRef}
       center={[-25.2744, 133.7751]}
       zoom={5}
       scrollWheelZoom
       zoomControl
-      className={`absolute inset-0 w-full h-full ${pinMode ? "cursor-pin" : ""}`}
+      className={`absolute inset-0 w-full h-full ${pinMode ? "cursor-pin" : drawCursor ? "cursor-draw" : ""}`}
     >
       <TileLayer
         url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
