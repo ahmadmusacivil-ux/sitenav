@@ -107,14 +107,23 @@ function useDeviceHeading() {
   return heading;
 }
 
-function createPinIcon(color: string) {
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string,
+  );
+}
+
+function createPinIcon(color: string, label?: string) {
   return L.divIcon({
     className: "pin-marker",
-    html: `<span class="pin-dot" style="background:${color}"></span>`,
+    html: `<span class="pin-dot" style="background:${color}"></span>${
+      label ? `<span class="pin-label">${escapeHtml(label)}</span>` : ""
+    }`,
     iconSize: [22, 28],
     iconAnchor: [11, 26],
   });
 }
+
 
 function MapClickHandler({ onMapClick }: { onMapClick: (e: L.LeafletMouseEvent) => void }) {
   useMapEvents({ click: onMapClick });
@@ -563,13 +572,11 @@ export default function RouteMap({
           );
         })}
       {pins.map((p) => (
-        <Marker key={p.id} position={[p.lat, p.lng]} icon={createPinIcon(PIN_COLORS[p.label])}>
-          <Tooltip permanent direction="top" offset={[0, -22]} opacity={1} className="pin-tooltip">
-            {p.label}
-          </Tooltip>
+        <Marker key={p.id} position={[p.lat, p.lng]} icon={createPinIcon(PIN_COLORS[p.label], p.label)}>
           {p.note && (
-            <Tooltip direction="bottom" offset={[0, 0]} opacity={1} className="pin-note-tooltip">
+            <Tooltip direction="bottom" offset={[0, 4]} opacity={1} className="pin-note-tooltip">
               {p.note}
+
             </Tooltip>
           )}
         </Marker>
