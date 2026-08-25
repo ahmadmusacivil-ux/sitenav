@@ -572,13 +572,11 @@ export default function RouteMap({
           );
         })}
       {pins.map((p) => (
-        <Marker key={p.id} position={[p.lat, p.lng]} icon={createPinIcon(PIN_COLORS[p.label])}>
-          <Tooltip permanent direction="top" offset={[0, -22]} opacity={1} className="pin-tooltip">
-            {p.label}
-          </Tooltip>
+        <Marker key={p.id} position={[p.lat, p.lng]} icon={createPinIcon(PIN_COLORS[p.label], p.label)}>
           {p.note && (
-            <Tooltip direction="bottom" offset={[0, 0]} opacity={1} className="pin-note-tooltip">
+            <Tooltip direction="bottom" offset={[0, 4]} opacity={1} className="pin-note-tooltip">
               {p.note}
+
             </Tooltip>
           )}
         </Marker>
