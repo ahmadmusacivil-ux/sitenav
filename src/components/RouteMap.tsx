@@ -107,14 +107,23 @@ function useDeviceHeading() {
   return heading;
 }
 
-function createPinIcon(color: string) {
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string,
+  );
+}
+
+function createPinIcon(color: string, label?: string) {
   return L.divIcon({
     className: "pin-marker",
-    html: `<span class="pin-dot" style="background:${color}"></span>`,
+    html: `<span class="pin-dot" style="background:${color}"></span>${
+      label ? `<span class="pin-label">${escapeHtml(label)}</span>` : ""
+    }`,
     iconSize: [22, 28],
     iconAnchor: [11, 26],
   });
 }
+
 
 function MapClickHandler({ onMapClick }: { onMapClick: (e: L.LeafletMouseEvent) => void }) {
   useMapEvents({ click: onMapClick });
