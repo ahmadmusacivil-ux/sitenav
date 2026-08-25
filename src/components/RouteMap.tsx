@@ -4,8 +4,6 @@ import L from "leaflet";
 import "leaflet-polylinedecorator";
 import { type Pin, PIN_COLORS } from "@/lib/pins";
 import { type SegmentType, type RouteType } from "@/lib/supabase";
-import { VEHICLE_ICON_SVG, isCustomIcon } from "@/lib/vehicles";
-import { RotateCcw, RotateCw, Navigation as NavigationIcon } from "lucide-react";
 
 export interface Waypoint {
   id: number;
@@ -53,22 +51,7 @@ function arrowPath(height: number) {
   return `M 50 ${apexY} L ${50 + halfW} ${baseY} L 50 ${baseY - height * 0.28} L ${50 - halfW} ${baseY} Z`;
 }
 
-function vehicleMarkup(icon: string | null | undefined, rot: number) {
-  if (!icon || icon === "dot") return "";
-  const spin = `rotate(${rot} 50 50)`;
-  if (isCustomIcon(icon)) {
-    return `<g transform="${spin}"><image href="${icon}" x="32" y="32" width="36" height="36" preserveAspectRatio="xMidYMid meet"/></g>`;
-  }
-  const body = VEHICLE_ICON_SVG[icon as keyof typeof VEHICLE_ICON_SVG];
-  if (!body) return "";
-  // 24x24 icon body scaled up and centred on the dot.
-  return `<g transform="${spin} translate(32 32) scale(1.5)" fill="none" stroke="#fff" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" paint-order="stroke">${body}</g>
-          <g transform="${spin} translate(32 32) scale(1.5)" fill="none" stroke="${GPS_ARROW_COLOR}" stroke-width="1.6"
-            stroke-linecap="round" stroke-linejoin="round">${body}</g>`;
-}
-
-function createGpsIcon(heading: number | null, vehicleIcon?: string | null) {
+function createGpsIcon(heading: number | null) {
   const rot = heading == null ? null : Math.round(heading);
   const arrows =
     rot == null
@@ -78,15 +61,12 @@ function createGpsIcon(heading: number | null, vehicleIcon?: string | null) {
            <path d="${arrowPath(24)}" opacity="0.5"/>
            <path d="${arrowPath(14)}" opacity="1"/>
          </g>`;
-  const vehicle = vehicleMarkup(vehicleIcon, rot ?? 0);
   return L.divIcon({
     className: "gps-marker",
     html: `<svg width="100" height="100" viewBox="0 0 100 100" class="gps-svg">
         <circle cx="50" cy="50" r="12" fill="${GPS_ARROW_COLOR}" opacity="0.2"/>
         ${arrows}
-        ${vehicle
-          ? vehicle
-          : `<circle class="gps-core" cx="50" cy="50" r="6" fill="#3b82f6" stroke="#fff" stroke-width="1"/>`}
+        <circle class="gps-core" cx="50" cy="50" r="6" fill="#3b82f6" stroke="#fff" stroke-width="1"/>
       </svg>`,
     iconSize: [100, 100],
     iconAnchor: [50, 50],
@@ -259,24 +239,7 @@ export type BackgroundRoute = {
   entry: [number, number][];
   exit?: [number, number][];
   routeType?: RouteType;
-  /** Distinct colour so several site routes can be told apart. */
-  color?: string;
-  opacity?: number;
-  /** Vehicle class, used for filtering in the creator. */
-  vehicleType?: string;
 };
-
-/** Palette used when several routes share one map. */
-export const ROUTE_PALETTE = [
-  "#38bdf8",
-  "#a78bfa",
-  "#f472b6",
-  "#facc15",
-  "#34d399",
-  "#fb923c",
-  "#f87171",
-  "#22d3ee",
-];
 
 function routeBounds(r: BackgroundRoute) {
   const pts = [...r.entry, ...(r.exit ?? [])];
@@ -291,13 +254,7 @@ function routeBounds(r: BackgroundRoute) {
   return L.latLngBounds([minLat, minLng], [maxLat, maxLng]);
 }
 
-function BackgroundRoutes({
-  routes,
-  onSelect,
-}: {
-  routes: BackgroundRoute[];
-  onSelect?: (id: string) => void;
-}) {
+function BackgroundRoutes({ routes }: { routes: BackgroundRoute[] }) {
   const map = useMap();
   const [bounds, setBounds] = useState<L.LatLngBounds | null>(() => {
     try { return map.getBounds(); } catch { return null; }
@@ -317,18 +274,19 @@ function BackgroundRoutes({
       {visible.map((r) => {
         const entry = smoothPath(r.entry);
         const exit = r.exit ? smoothPath(r.exit) : [];
-        const opts = {
-          color: r.color ?? BG_COLOR,
-          weight: 6,
-          opacity: r.opacity ?? 0.3,
-          lineCap: "round" as const,
-          lineJoin: "round" as const,
-        };
-        const handlers = onSelect ? { click: () => onSelect(r.id) } : undefined;
         return (
           <Fragment key={r.id}>
             {entry.length > 1 && (
-              <Polyline positions={entry} pathOptions={opts} eventHandlers={handlers}>
+              <Polyline
+                positions={entry}
+                pathOptions={{
+                  color: BG_COLOR,
+                  weight: 6,
+                  opacity: 0.3,
+                  lineCap: "round",
+                  lineJoin: "round",
+                }}
+              >
                 {r.name && (
                   <Tooltip sticky direction="top" opacity={1} className="bg-route-tooltip">
                     {r.name}
@@ -337,7 +295,16 @@ function BackgroundRoutes({
               </Polyline>
             )}
             {exit.length > 1 && (
-              <Polyline positions={exit} pathOptions={opts} eventHandlers={handlers}>
+              <Polyline
+                positions={exit}
+                pathOptions={{
+                  color: BG_COLOR,
+                  weight: 6,
+                  opacity: 0.3,
+                  lineCap: "round",
+                  lineJoin: "round",
+                }}
+              >
                 {r.name && (
                   <Tooltip sticky direction="top" opacity={1} className="bg-route-tooltip">
                     {r.name}
@@ -372,12 +339,6 @@ export type RouteMapProps = {
   onMoveWaypoint?: (leg: "entry" | "exit", id: number, lat: number, lng: number) => void;
   onDeleteWaypoint?: (leg: "entry" | "exit", id: number) => void;
   onInsertWaypoint?: (leg: "entry" | "exit", afterIndex: number, lat: number, lng: number) => void;
-  /** Built-in icon id or data URL shown as the "you are here" marker. */
-  vehicleIcon?: string | null;
-  /** Show rotation + compass controls (view-only pages). */
-  allowRotation?: boolean;
-  /** Click a background route line. */
-  onSelectBackgroundRoute?: (id: string) => void;
 };
 
 export default function RouteMap({
@@ -400,12 +361,8 @@ export default function RouteMap({
   onMoveWaypoint,
   onDeleteWaypoint,
   onInsertWaypoint,
-  vehicleIcon,
-  allowRotation = false,
-  onSelectBackgroundRoute,
 }: RouteMapProps) {
   const mapRef = useRef<L.Map | null>(null);
-  const [rotation, setRotation] = useState(0);
   const compassHeading = useDeviceHeading();
   // Fallback when the device has no compass: point at the next waypoint.
   let gpsHeading: number | null = compassHeading;
@@ -473,16 +430,14 @@ export default function RouteMap({
     onInsertWaypoint(leg, bestI, click.lat, click.lng);
   };
 
-  const drawCursor = Boolean(onAddWaypoint) && !editMode && !pinMode;
-
-  const mapEl = (
+  return (
     <MapContainer
       ref={mapRef}
       center={[-25.2744, 133.7751]}
       zoom={5}
       scrollWheelZoom
       zoomControl
-      className={`absolute inset-0 w-full h-full ${pinMode ? "cursor-pin" : drawCursor ? "cursor-draw" : ""}`}
+      className={`absolute inset-0 w-full h-full ${pinMode ? "cursor-pin" : ""}`}
     >
       <TileLayer
         url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
@@ -495,7 +450,7 @@ export default function RouteMap({
       {followGps && gpsPosition && <FollowGps position={gpsPosition} />}
       <FlyTo target={flyTo} />
       {backgroundRoutes && backgroundRoutes.length > 0 && (
-        <BackgroundRoutes routes={backgroundRoutes} onSelect={onSelectBackgroundRoute} />
+        <BackgroundRoutes routes={backgroundRoutes} />
       )}
       {/* Entry leg sub-polylines, coloured per movement type. */}
       {entrySegs.map((s, idx) => {
@@ -620,59 +575,11 @@ export default function RouteMap({
       {gpsPosition && (
         <Marker
           position={[gpsPosition.lat, gpsPosition.lng]}
-          icon={createGpsIcon(gpsHeading, vehicleIcon)}
+          icon={createGpsIcon(gpsHeading)}
           interactive={false}
           zIndexOffset={1000}
         />
       )}
     </MapContainer>
-  );
-
-  if (!allowRotation) return mapEl;
-
-  return (
-    <div className="absolute inset-0 overflow-hidden">
-      <div
-        className="absolute map-rotator"
-        style={{ inset: "-30%", transform: `rotate(${rotation}deg)` }}
-      >
-        {mapEl}
-      </div>
-      <div className="absolute right-3 bottom-24 z-[1000] flex flex-col items-center gap-2">
-        <button
-          type="button"
-          aria-label="Rotate map anticlockwise"
-          onClick={() => setRotation((r) => r - 15)}
-          className="h-9 w-9 rounded-full bg-background/90 border border-border shadow flex items-center justify-center text-foreground"
-        >
-          <RotateCcw className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          aria-label="Reset map to north up"
-          onClick={() => setRotation(0)}
-          className="h-11 w-11 rounded-full bg-background/90 border border-border shadow flex items-center justify-center"
-        >
-          <span
-            className="relative block h-7 w-7"
-            style={{ transform: `rotate(${rotation}deg)` }}
-          >
-            <span className="absolute inset-x-0 top-0 text-[9px] font-bold text-primary text-center leading-none">N</span>
-            <span className="absolute inset-x-0 bottom-0 text-[9px] font-semibold text-muted-foreground text-center leading-none">S</span>
-            <span className="absolute inset-y-0 left-0 flex items-center text-[9px] font-semibold text-muted-foreground leading-none">W</span>
-            <span className="absolute inset-y-0 right-0 flex items-center text-[9px] font-semibold text-muted-foreground leading-none">E</span>
-            <NavigationIcon className="absolute inset-0 m-auto h-3.5 w-3.5 text-primary" />
-          </span>
-        </button>
-        <button
-          type="button"
-          aria-label="Rotate map clockwise"
-          onClick={() => setRotation((r) => r + 15)}
-          className="h-9 w-9 rounded-full bg-background/90 border border-border shadow flex items-center justify-center text-foreground"
-        >
-          <RotateCw className="h-4 w-4" />
-        </button>
-      </div>
-    </div>
   );
 }

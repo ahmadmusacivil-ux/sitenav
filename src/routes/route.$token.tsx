@@ -32,7 +32,7 @@ function FollowerPage() {
   useEffect(() => {
     supabase
       .from("routes")
-      .select("id,user_id,name,waypoints,exit_waypoints,route_type,pins,share_token,created_at,expires_at,site,vehicle_type,vehicle_icon")
+      .select("id,user_id,name,waypoints,exit_waypoints,route_type,pins,share_token,created_at,expires_at")
       .eq("share_token", token)
       .maybeSingle()
       .then(({ data }) => {
@@ -215,14 +215,6 @@ function FollowerPage() {
             )}
           </p>
         </div>
-        {route.vehicle_type && (
-          <span
-            className="flex-shrink-0 px-2.5 py-1 rounded-full bg-orange-500/15 border border-orange-500/40 text-orange-300 text-xs font-semibold"
-            title="Vehicle class this route is intended for"
-          >
-            {route.vehicle_type}
-          </span>
-        )}
         <div className="hidden sm:flex items-center gap-2 text-xs text-navy-400">
           <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" /> You
         </div>
@@ -255,8 +247,6 @@ function FollowerPage() {
           fitToWaypoints={!followGps}
           followGps={followGps}
           flyTo={flyTarget}
-          vehicleIcon={route.vehicle_icon}
-          allowRotation
         />
         <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-2 items-end">
           <button

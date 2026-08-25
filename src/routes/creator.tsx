@@ -23,13 +23,7 @@ import {
   Eraser,
 } from "lucide-react";
 import { ClientOnlyMap } from "@/components/ClientOnlyMap";
-import { type BackgroundRoute, ROUTE_PALETTE } from "@/components/RouteMap";
-import {
-  VEHICLE_PRESETS,
-  VEHICLE_ICON_OPTIONS,
-  fileToIconDataUrl,
-  isCustomIcon,
-} from "@/lib/vehicles";
+import { type BackgroundRoute } from "@/components/RouteMap";
 import LocationSearch from "@/components/LocationSearch";
 import { useAuth } from "@/lib/auth";
 import { supabase, type RouteType, type SavedRoute, type SegmentType, normalizeRouteType } from "@/lib/supabase";
@@ -57,7 +51,7 @@ interface Waypoint {
 }
 
 const routeSelectColumns =
-  "id,user_id,name,waypoints,exit_waypoints,route_type,pins,share_token,created_at,expires_at,site,vehicle_type,vehicle_icon";
+  "id,user_id,name,waypoints,exit_waypoints,route_type,pins,share_token,created_at,expires_at";
 
 function defaultExpiryISO(): string {
   const d = new Date();
@@ -88,10 +82,6 @@ function CreatorPage() {
   const [namePromptOpen, setNamePromptOpen] = useState(false);
   const [routeName, setRouteName] = useState("");
   const [expiresAt, setExpiresAt] = useState<string>(() => defaultExpiryISO());
-  const [site, setSite] = useState("");
-  const [vehicleType, setVehicleType] = useState<string>("LV");
-  const [vehicleIcon, setVehicleIcon] = useState<string>("dot");
-  const [vehicleFilter, setVehicleFilter] = useState<string>("all");
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [gpsPos, setGpsPos] = useState<{ lat: number; lng: number } | null>(null);
@@ -218,7 +208,7 @@ function CreatorPage() {
     let cancelled = false;
     supabase
       .from("routes")
-      .select("id,name,waypoints,exit_waypoints,route_type,site,vehicle_type")
+      .select("id,name,waypoints,exit_waypoints,route_type")
       .eq("user_id", user.id)
       .then(({ data }) => {
         if (cancelled || !data) return;
@@ -228,16 +218,12 @@ function CreatorPage() {
           waypoints: { lat: number; lng: number; t?: SegmentType }[] | null;
           exit_waypoints: { lat: number; lng: number; t?: SegmentType }[] | null;
           route_type: string | null;
-          site: string | null;
-          vehicle_type: string | null;
         }[];
         const bg: BackgroundRoute[] = rows
           .filter((r) => r.id !== editId)
-          .map((r, i) => ({
+          .map((r) => ({
             id: r.id,
-            name: r.vehicle_type ? `${r.name} · ${r.vehicle_type}` : r.name,
-            color: ROUTE_PALETTE[i % ROUTE_PALETTE.length],
-            vehicleType: r.vehicle_type ?? undefined,
+            name: r.name,
             entry: (r.waypoints ?? []).map((w) => [w.lat, w.lng] as [number, number]),
             exit: (r.exit_waypoints ?? []).map((w) => [w.lat, w.lng] as [number, number]),
             routeType: normalizeRouteType(r.route_type),
@@ -291,9 +277,6 @@ function CreatorPage() {
               pins: Pin[] | null;
               share_token: string;
               expires_at: string | null;
-              site: string | null;
-              vehicle_type: string | null;
-              vehicle_icon: string | null;
             }
           | null;
         if (r) {
@@ -319,9 +302,6 @@ function CreatorPage() {
           );
           setRouteName(r.name);
           setExpiresAt(r.expires_at ?? "");
-          setSite(r.site ?? "");
-          setVehicleType(r.vehicle_type ?? "LV");
-          setVehicleIcon(r.vehicle_icon ?? "dot");
           setEditingId(r.id);
           setEditingShareToken(r.share_token);
         }
@@ -408,11 +388,6 @@ function CreatorPage() {
     setShareUrl(null);
   };
 
-  const visibleBackgroundRoutes =
-    vehicleFilter === "all"
-      ? backgroundRoutes
-      : backgroundRoutes.filter((r) => (r.vehicleType ?? "") === vehicleFilter);
-
   const openSavePrompt = () => {
     if (!canSave) return;
     // When editing an existing route, skip the name prompt entirely and
@@ -447,9 +422,6 @@ function CreatorPage() {
         note: p.note ?? null,
       })),
       expires_at: expiresAt ? expiresAt : null,
-      site: site.trim() ? site.trim() : null,
-      vehicle_type: vehicleType.trim() ? vehicleType.trim() : null,
-      vehicle_icon: vehicleIcon || "dot",
     };
     if (editingId) {
       // Debug: confirm the row exists and the logged-in user owns it before
@@ -812,37 +784,6 @@ function CreatorPage() {
               </button>
             </div>
           )}
-          {/* Vehicle class for this route + filter for other site routes */}
-          <div className="inline-flex items-center gap-1">
-            <select
-              value={vehicleType}
-              onChange={(e) => setVehicleType(e.target.value)}
-              title="Vehicle class this route is intended for"
-              className="px-2 py-1 text-xs rounded-md bg-navy-800/80 border border-navy-700 text-white focus:outline-none focus:border-orange-500"
-            >
-              {VEHICLE_PRESETS.map((v) => (
-                <option key={v.value} value={v.value}>
-                  {v.label}
-                </option>
-              ))}
-              {!VEHICLE_PRESETS.some((v) => v.value === vehicleType) && (
-                <option value={vehicleType}>{vehicleType}</option>
-              )}
-            </select>
-            <select
-              value={vehicleFilter}
-              onChange={(e) => setVehicleFilter(e.target.value)}
-              title="Filter the other routes shown on the map"
-              className="px-2 py-1 text-xs rounded-md bg-navy-800/80 border border-navy-700 text-navy-200 focus:outline-none focus:border-orange-500"
-            >
-              <option value="all">All vehicles</option>
-              {VEHICLE_PRESETS.map((v) => (
-                <option key={v.value} value={v.value}>
-                  {v.value} only
-                </option>
-              ))}
-            </select>
-          </div>
           {/* In/Out direction selector — only for One-Way */}
           {routeType === "one_way" && !editMode && (
             <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
@@ -946,14 +887,13 @@ function CreatorPage() {
           gpsPosition={gpsPos}
           fitToWaypoints={Boolean(editId) && !gpsFlewRef.current}
           flyTo={flyTarget}
-          backgroundRoutes={visibleBackgroundRoutes}
+          backgroundRoutes={backgroundRoutes}
           hideWaypointMarkers={recording}
           editMode={editMode}
           editTool={editTool}
           onMoveWaypoint={handleMoveWaypoint}
           onDeleteWaypoint={handleDeleteWaypoint}
           onInsertWaypoint={handleInsertWaypoint}
-          vehicleIcon={vehicleIcon}
         />
         <LocationSearch
           onSelect={(lat, lng) => setFlyTarget({ lat, lng, zoom: 17, seq: Date.now() })}
@@ -1116,58 +1056,6 @@ function CreatorPage() {
               className="w-full px-3 py-2.5 rounded-lg bg-navy-950 border border-navy-700 text-white placeholder-navy-500 focus:outline-none focus:border-orange-500"
               placeholder="e.g. North gate to office trailer"
             />
-            <label className="block mt-3 text-xs font-medium text-navy-300">Site / project</label>
-            <input
-              value={site}
-              onChange={(e) => setSite(e.target.value)}
-              className="mt-1 w-full px-3 py-2 rounded-lg bg-navy-950 border border-navy-700 text-white placeholder-navy-500 focus:outline-none focus:border-orange-500"
-              placeholder="e.g. Northgate Yard"
-            />
-            <label className="block mt-3 text-xs font-medium text-navy-300">Vehicle class</label>
-            <input
-              value={vehicleType}
-              onChange={(e) => setVehicleType(e.target.value)}
-              className="mt-1 w-full px-3 py-2 rounded-lg bg-navy-950 border border-navy-700 text-white placeholder-navy-500 focus:outline-none focus:border-orange-500"
-              placeholder="LV, HV or a custom class"
-            />
-            <label className="block mt-3 text-xs font-medium text-navy-300">Follower icon</label>
-            <div className="mt-1 flex flex-wrap items-center gap-1.5">
-              {VEHICLE_ICON_OPTIONS.map((o) => (
-                <button
-                  key={o.id}
-                  type="button"
-                  onClick={() => setVehicleIcon(o.id)}
-                  className={`px-2.5 py-1 text-xs rounded-md border ${
-                    vehicleIcon === o.id
-                      ? "bg-orange-500 border-orange-500 text-white"
-                      : "bg-navy-950 border-navy-700 text-navy-200 hover:text-white"
-                  }`}
-                >
-                  {o.label}
-                </button>
-              ))}
-              <label className={`px-2.5 py-1 text-xs rounded-md border cursor-pointer ${
-                isCustomIcon(vehicleIcon)
-                  ? "bg-orange-500 border-orange-500 text-white"
-                  : "bg-navy-950 border-navy-700 text-navy-200 hover:text-white"
-              }`}>
-                Upload
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={async (e) => {
-                    const f = e.target.files?.[0];
-                    if (!f) return;
-                    try {
-                      setVehicleIcon(await fileToIconDataUrl(f));
-                    } catch {
-                      toast.error("Could not read that image");
-                    }
-                  }}
-                />
-              </label>
-            </div>
             {errorMsg && <p className="mt-2 text-red-400 text-xs">{errorMsg}</p>}
             <div className="mt-5 flex gap-2 justify-end">
               <button
