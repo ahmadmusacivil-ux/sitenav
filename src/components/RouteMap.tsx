@@ -391,8 +391,8 @@ export default function RouteMap({
   const exitRaw = exitWaypoints.map((w) => [w.lat, w.lng] as [number, number]);
   const rawPoints = [...entryRaw, ...exitRaw];
   const clickable = Boolean(onAddWaypoint || onAddPin);
-  const dim = 0.3;
-  const bright = 0.95;
+  const dim = 0.25;
+  const bright = 0.7;
 
   // Build connected sub-polylines by movement type (`t`). Segment i covers the
   // line from waypoint[i-1] → waypoint[i] and adopts waypoint[i]'s `t`.
@@ -455,11 +455,12 @@ export default function RouteMap({
       {/* Entry leg sub-polylines, coloured per movement type. */}
       {entrySegs.map((s, idx) => {
         const color = segmentColor(s.type, "entry");
+        const curve = smoothPath(s.pts);
         return (
           <Fragment key={`entry-${idx}`}>
             <Polyline
-              positions={s.pts}
-              pathOptions={{ color, weight: 4, opacity: 0.95, lineCap: "round", lineJoin: "round" }}
+              positions={curve}
+              pathOptions={{ color, weight: 5, opacity: 0.65, lineCap: "round", lineJoin: "round" }}
               eventHandlers={
                 editMode && editTool === "add"
                   ? { click: (e) => insertOnLine("entry", entryRaw, e) }
@@ -467,7 +468,7 @@ export default function RouteMap({
               }
             />
             <DirectionArrows
-              points={s.pts}
+              points={curve}
               color={color}
               opacity={activeDirection === "in" ? bright : dim}
               reverse={false}
@@ -475,7 +476,7 @@ export default function RouteMap({
             {/* Two-Way: also show reverse-direction arrows in blue on the same path. */}
             {routeType === "two_way" && (
               <DirectionArrows
-                points={s.pts}
+                points={curve}
                 color={REVERSE_COLOR}
                 opacity={activeDirection === "out" ? bright : dim}
                 reverse={true}
@@ -487,11 +488,12 @@ export default function RouteMap({
       {/* Exit leg (only meaningful for one_way). */}
       {routeType === "one_way" && exitSegs.map((s, idx) => {
         const color = segmentColor(s.type, "exit");
+        const curve = smoothPath(s.pts);
         return (
           <Fragment key={`exit-${idx}`}>
             <Polyline
-              positions={s.pts}
-              pathOptions={{ color, weight: 4, opacity: 0.95, lineCap: "round", lineJoin: "round" }}
+              positions={curve}
+              pathOptions={{ color, weight: 5, opacity: 0.65, lineCap: "round", lineJoin: "round" }}
               eventHandlers={
                 editMode && editTool === "add"
                   ? { click: (e) => insertOnLine("exit", exitRaw, e) }
@@ -499,7 +501,7 @@ export default function RouteMap({
               }
             />
             <DirectionArrows
-              points={s.pts}
+              points={curve}
               color={color}
               opacity={activeDirection === "out" ? bright : dim}
               reverse={false}
