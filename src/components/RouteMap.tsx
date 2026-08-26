@@ -2,6 +2,8 @@ import { Fragment, useState, useCallback, useRef, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Polyline, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet-polylinedecorator";
+import "leaflet-rotate";
+
 import { type Pin, PIN_COLORS } from "@/lib/pins";
 import { type SegmentType, type RouteType } from "@/lib/supabase";
 
