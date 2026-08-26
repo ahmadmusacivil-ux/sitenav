@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SafetyRouteImport } from './routes/safety'
 import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as MaptestRouteImport } from './routes/maptest'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CreatorRouteImport } from './routes/creator'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -33,11 +32,6 @@ const SafetyRoute = SafetyRouteImport.update({
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MaptestRoute = MaptestRouteImport.update({
-  id: '/maptest',
-  path: '/maptest',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -76,7 +70,6 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/creator': typeof CreatorRoute
   '/dashboard': typeof DashboardRoute
-  '/maptest': typeof MaptestRoute
   '/privacy': typeof PrivacyRoute
   '/safety': typeof SafetyRoute
   '/terms': typeof TermsRoute
@@ -88,7 +81,6 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/creator': typeof CreatorRoute
   '/dashboard': typeof DashboardRoute
-  '/maptest': typeof MaptestRoute
   '/privacy': typeof PrivacyRoute
   '/safety': typeof SafetyRoute
   '/terms': typeof TermsRoute
@@ -101,7 +93,6 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/creator': typeof CreatorRoute
   '/dashboard': typeof DashboardRoute
-  '/maptest': typeof MaptestRoute
   '/privacy': typeof PrivacyRoute
   '/safety': typeof SafetyRoute
   '/terms': typeof TermsRoute
@@ -115,7 +106,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/creator'
     | '/dashboard'
-    | '/maptest'
     | '/privacy'
     | '/safety'
     | '/terms'
@@ -127,7 +117,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/creator'
     | '/dashboard'
-    | '/maptest'
     | '/privacy'
     | '/safety'
     | '/terms'
@@ -139,7 +128,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/creator'
     | '/dashboard'
-    | '/maptest'
     | '/privacy'
     | '/safety'
     | '/terms'
@@ -152,7 +140,6 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CreatorRoute: typeof CreatorRoute
   DashboardRoute: typeof DashboardRoute
-  MaptestRoute: typeof MaptestRoute
   PrivacyRoute: typeof PrivacyRoute
   SafetyRoute: typeof SafetyRoute
   TermsRoute: typeof TermsRoute
@@ -181,13 +168,6 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/maptest': {
-      id: '/maptest'
-      path: '/maptest'
-      fullPath: '/maptest'
-      preLoaderRoute: typeof MaptestRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -240,7 +220,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CreatorRoute: CreatorRoute,
   DashboardRoute: DashboardRoute,
-  MaptestRoute: MaptestRoute,
   PrivacyRoute: PrivacyRoute,
   SafetyRoute: SafetyRoute,
   TermsRoute: TermsRoute,
