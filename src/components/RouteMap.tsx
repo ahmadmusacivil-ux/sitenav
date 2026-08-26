@@ -2,7 +2,12 @@ import { Fragment, useState, useCallback, useRef, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Polyline, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet-polylinedecorator";
-import "leaflet-rotate";
+// leaflet-rotate patches L.Map at import time and touches `window`, so it must
+// only load in the browser.
+if (typeof window !== "undefined") {
+  await import("leaflet-rotate");
+}
+
 
 import { type Pin, PIN_COLORS } from "@/lib/pins";
 import { type SegmentType, type RouteType } from "@/lib/supabase";
