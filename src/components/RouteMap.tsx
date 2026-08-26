@@ -499,6 +499,8 @@ export default function RouteMap({
     onInsertWaypoint(leg, bestI, click.lat, click.lng);
   };
 
+  const drawCursor = clickable && !pinMode && !editMode;
+
   return (
     <MapContainer
       ref={mapRef}
@@ -506,8 +508,13 @@ export default function RouteMap({
       zoom={5}
       scrollWheelZoom
       zoomControl
-      className={`absolute inset-0 w-full h-full ${pinMode ? "cursor-pin" : ""}`}
+      {...({ rotate: true, touchRotate: true, rotateControl: false, bearing: 0 } as object)}
+      className={`absolute inset-0 w-full h-full ${pinMode ? "cursor-pin" : ""} ${
+        drawCursor ? "cursor-draw" : ""
+      }`}
     >
+      <RotateControls />
+
       <TileLayer
         url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
         attribution="Tiles &copy; Esri"
