@@ -126,6 +126,64 @@ function createPinIcon(color: string, label?: string) {
   });
 }
 
+/** Rotate + compass controls (leaflet-rotate). Bearing is degrees clockwise. */
+function RotateControls() {
+  const map = useMap() as L.Map & {
+    setBearing?: (deg: number) => void;
+    getBearing?: () => number;
+  };
+  const [bearingDeg, setBearingDeg] = useState(0);
+
+  useEffect(() => {
+    if (!map.getBearing) return;
+    const sync = () => setBearingDeg(map.getBearing?.() ?? 0);
+    map.on("rotate", sync);
+    sync();
+    return () => {
+      map.off("rotate", sync);
+    };
+  }, [map]);
+
+  const rotateBy = (delta: number) => {
+    if (!map.setBearing) return;
+    map.setBearing(((map.getBearing?.() ?? 0) + delta) % 360);
+  };
+
+  if (!map.setBearing) return null;
+
+  return (
+    <div
+      className="leaflet-top leaflet-right"
+      style={{ pointerEvents: "none" }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="leaflet-control map-rotate-control" style={{ pointerEvents: "auto" }}>
+        <button type="button" title="Rotate left" aria-label="Rotate map left" onClick={() => rotateBy(-15)}>
+          ⟲
+        </button>
+        <button
+          type="button"
+          title="Reset to north"
+          aria-label="Reset map to north-up"
+          className="map-compass"
+          onClick={() => map.setBearing?.(0)}
+        >
+          <span className="map-compass-dial" style={{ transform: `rotate(${-bearingDeg}deg)` }}>
+            <span className="cd cd-n">N</span>
+            <span className="cd cd-e">E</span>
+            <span className="cd cd-s">S</span>
+            <span className="cd cd-w">W</span>
+            <span className="map-compass-needle" />
+          </span>
+        </button>
+        <button type="button" title="Rotate right" aria-label="Rotate map right" onClick={() => rotateBy(15)}>
+          ⟳
+        </button>
+      </div>
+    </div>
+  );
+}
+
 
 function MapClickHandler({ onMapClick }: { onMapClick: (e: L.LeafletMouseEvent) => void }) {
   useMapEvents({ click: onMapClick });
