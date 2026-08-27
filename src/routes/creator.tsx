@@ -90,7 +90,7 @@ function CreatorPage() {
   const [backgroundRoutes, setBackgroundRoutes] = useState<BackgroundRoute[]>([]);
 
   // Drive & Record mode
-  const [creatorMode, setCreatorMode] = useState<"draw" | "record">("draw");
+  const [creatorMode, setCreatorMode] = useState<"draw" | "record" | null>(null);
   const [recording, setRecording] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editTool, setEditTool] = useState<"move" | "erase" | "add">("move");
@@ -686,7 +686,7 @@ function CreatorPage() {
             <button
               onClick={() => {
                 if (recording) return;
-                setCreatorMode("draw");
+                setCreatorMode((m) => (m === "draw" ? null : "draw"));
                 setEditMode(false);
               }}
               disabled={recording}
@@ -700,7 +700,7 @@ function CreatorPage() {
             <button
               onClick={() => {
                 if (recording) return;
-                setCreatorMode("record");
+                setCreatorMode((m) => (m === "record" ? null : "record"));
                 setMode("waypoint");
                 setEditMode(false);
               }}
