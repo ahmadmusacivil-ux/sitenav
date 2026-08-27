@@ -895,9 +895,6 @@ function CreatorPage() {
           onDeleteWaypoint={handleDeleteWaypoint}
           onInsertWaypoint={handleInsertWaypoint}
         />
-        <LocationSearch
-          onSelect={(lat, lng) => setFlyTarget({ lat, lng, zoom: 17, seq: Date.now() })}
-        />
         <button
           onClick={() => {
             if (!gpsPos) return;
