@@ -686,7 +686,7 @@ function CreatorPage() {
             <button
               onClick={() => {
                 if (recording) return;
-                setCreatorMode("draw");
+                setCreatorMode((m) => (m === "draw" ? null : "draw"));
                 setEditMode(false);
               }}
               disabled={recording}
