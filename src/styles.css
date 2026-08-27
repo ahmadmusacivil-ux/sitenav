@@ -334,12 +334,20 @@
     2 26, crosshair !important;
 }
 
-/* Map rotation + compass controls */
+/* Map rotation + compass controls — right-middle, stacked vertically */
+.map-rotate-wrapper {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1000;
+}
 .map-rotate-control {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  margin: 10px !important;
+  gap: 8px;
+  margin: 0 12px 0 0 !important;
 }
 .map-rotate-control button {
   width: 34px;
