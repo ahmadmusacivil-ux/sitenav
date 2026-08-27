@@ -158,7 +158,7 @@ function RotateControls() {
 
   return (
     <div
-      className="leaflet-top leaflet-right"
+      className="leaflet-bottom leaflet-right"
       style={{ pointerEvents: "none" }}
       onClick={(e) => e.stopPropagation()}
     >
