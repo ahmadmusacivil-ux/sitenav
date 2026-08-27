@@ -90,7 +90,7 @@ function CreatorPage() {
   const [backgroundRoutes, setBackgroundRoutes] = useState<BackgroundRoute[]>([]);
 
   // Drive & Record mode
-  const [creatorMode, setCreatorMode] = useState<"draw" | "record">("draw");
+  const [creatorMode, setCreatorMode] = useState<"draw" | "record" | null>(null);
   const [recording, setRecording] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editTool, setEditTool] = useState<"move" | "erase" | "add">("move");
