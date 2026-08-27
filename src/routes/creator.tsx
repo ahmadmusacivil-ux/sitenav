@@ -700,7 +700,7 @@ function CreatorPage() {
             <button
               onClick={() => {
                 if (recording) return;
-                setCreatorMode("record");
+                setCreatorMode((m) => (m === "record" ? null : "record"));
                 setMode("waypoint");
                 setEditMode(false);
               }}
