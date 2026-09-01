@@ -644,7 +644,7 @@ export default function RouteMap({
           );
         })}
       {pins.map((p) => (
-        <Marker key={p.id} position={[p.lat, p.lng]} icon={createPinIcon(PIN_COLORS[p.label], p.label)}>
+        <Marker key={p.id} position={[p.lat, p.lng]} icon={createPinIcon(PIN_COLORS[p.label] ?? "#94a3b8", p.label)}>
           {p.note && (
             <Tooltip direction="bottom" offset={[0, 4]} opacity={1} className="pin-note-tooltip">
               {p.note}

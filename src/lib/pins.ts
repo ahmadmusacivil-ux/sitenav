@@ -11,7 +11,8 @@ export const PIN_LABELS = [
   "Other",
 ] as const;
 
-export type PinLabel = (typeof PIN_LABELS)[number];
+// Preset labels are suggested, but any custom label string is allowed.
+export type PinLabel = string;
 
 export type Pin = {
   id: string;
