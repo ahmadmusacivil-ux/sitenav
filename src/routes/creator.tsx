@@ -681,6 +681,12 @@ function CreatorPage() {
             </button>
           </div>
         </div>
+        <div className="mt-2 flex justify-center">
+          <LocationSearch
+            userLocation={gpsPos}
+            onSelect={(lat, lng) => setFlyTarget({ lat, lng, zoom: 17, seq: Date.now() })}
+          />
+        </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
             <button
