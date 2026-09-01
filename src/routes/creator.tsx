@@ -76,6 +76,7 @@ function CreatorPage() {
   const [mode, setMode] = useState<"waypoint" | "pin">("waypoint");
   const [pendingPin, setPendingPin] = useState<{ lat: number; lng: number } | null>(null);
   const [pinLabel, setPinLabel] = useState<PinLabel>("Entry");
+  const [customPinLabel, setCustomPinLabel] = useState("");
   const [pinNote, setPinNote] = useState("");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -358,18 +359,22 @@ function CreatorPage() {
   const startPinPlacement = (lat: number, lng: number) => {
     setPendingPin({ lat, lng });
     setPinLabel("Entry");
+    setCustomPinLabel("");
     setPinNote("");
   };
 
   const confirmPin = () => {
     if (!pendingPin) return;
+    // "Other" lets the user type a custom label; fall back to "Other" if blank.
+    const resolvedLabel =
+      pinLabel === "Other" ? customPinLabel.trim() || "Other" : pinLabel;
     setPins((p) => [
       ...p,
       {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         lat: pendingPin.lat,
         lng: pendingPin.lng,
-        label: pinLabel,
+        label: resolvedLabel,
         note: pinNote.trim() || undefined,
       },
     ]);
@@ -1010,9 +1015,24 @@ function CreatorPage() {
               </select>
               <span
                 className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border border-white/40"
-                style={{ background: PIN_COLORS[pinLabel] }}
+                style={{ background: PIN_COLORS[pinLabel] ?? "#94a3b8" }}
               />
             </div>
+            {pinLabel === "Other" && (
+              <div className="mb-3">
+                <input
+                  value={customPinLabel}
+                  onChange={(e) => setCustomPinLabel(e.target.value)}
+                  maxLength={40}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") confirmPin();
+                  }}
+                  className="w-full px-3 py-2.5 rounded-lg bg-navy-950 border border-navy-700 text-white placeholder-navy-500 focus:outline-none focus:border-orange-500"
+                  placeholder="Type a custom label…"
+                  autoFocus
+                />
+              </div>
+            )}
             <label className="block text-xs font-medium text-navy-300 mb-1">Note (optional)</label>
             <input
               value={pinNote}
