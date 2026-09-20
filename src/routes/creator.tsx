@@ -1,5 +1,5 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { createFileRoute, Link, useBlocker, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Trash2,
@@ -100,6 +100,73 @@ function CreatorPage() {
   const recordLegRef = useRef<"entry" | "exit">("entry");
   const lastRecordedRef = useRef<{ lat: number; lng: number } | null>(null);
   const recordIdRef = useRef(0);
+
+  // ---- Unsaved-changes tracking ----
+  const [leaveModalOpen, setLeaveModalOpen] = useState(false);
+  const signature = useMemo(
+    () =>
+      JSON.stringify({
+        w: waypoints,
+        e: exitWaypoints,
+        p: pins,
+        rt: routeType,
+        mt: movementType,
+        ex: expiresAt,
+      }),
+    [waypoints, exitWaypoints, pins, routeType, movementType, expiresAt],
+  );
+  const signatureRef = useRef(signature);
+  signatureRef.current = signature;
+  const baselineRef = useRef<string | null>(null);
+  const isDirtyRef = useRef(false);
+  isDirtyRef.current = baselineRef.current !== null && signature !== baselineRef.current;
+  const pendingProceedRef = useRef<(() => void) | null>(null);
+
+  // Capture the baseline once any route being edited has finished loading,
+  // so freshly loaded data doesn't count as "unsaved changes".
+  useEffect(() => {
+    if (baselineRef.current === null && !loadingRoute) {
+      baselineRef.current = signatureRef.current;
+    }
+  }, [loadingRoute]);
+
+  // Warn before closing/reloading the tab with unsaved changes.
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirtyRef.current) e.preventDefault();
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, []);
+
+  const blocker = useBlocker({
+    shouldBlockFn: () => {
+      if (!isDirtyRef.current) return false;
+      setLeaveModalOpen(true);
+      return true;
+    },
+    withResolver: true,
+  });
+
+  const markCleanAndProceed = () => {
+    baselineRef.current = signatureRef.current;
+    const proceed = pendingProceedRef.current;
+    pendingProceedRef.current = null;
+    if (proceed) proceed();
+  };
+
+  const handleSaveAndLeave = () => {
+    if (!canSave || saveStatus === "saving") return;
+    pendingProceedRef.current = () => blocker.proceed?.();
+    setLeaveModalOpen(false);
+    if (editingId) {
+      void handleSave();
+    } else {
+      setRouteName(`Route ${new Date().toLocaleString()}`);
+      setErrorMsg(null);
+      setNamePromptOpen(true);
+    }
+  };
 
   const haversine = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
     const R = 6371000;
@@ -528,16 +595,23 @@ function CreatorPage() {
       toast.success("Route updated successfully", {
         description: `"${routeName.trim()}" saved to your dashboard.`,
       });
-      // Brief delay so the user sees the confirmation, then return to the
-      // dashboard where the updated route is visible in "My Routes".
-      setTimeout(
-        () =>
-          navigate({
-            to: "/dashboard",
-            search: { tab: "mine", updated: editingId, refresh: String(Date.now()) },
-          }),
-        900,
-      );
+      if (pendingProceedRef.current) {
+        // Save was triggered from the unsaved-changes dialog — resume the
+        // navigation the user originally attempted.
+        markCleanAndProceed();
+      } else {
+        baselineRef.current = signatureRef.current;
+        // Brief delay so the user sees the confirmation, then return to the
+        // dashboard where the updated route is visible in "My Routes".
+        setTimeout(
+          () =>
+            navigate({
+              to: "/dashboard",
+              search: { tab: "mine", updated: editingId, refresh: String(Date.now()) },
+            }),
+          900,
+        );
+      }
     } else {
       const { data, error } = await supabase
         .from("routes")
@@ -556,6 +630,9 @@ function CreatorPage() {
       toast.success("Route saved", {
         description: `"${routeName.trim()}" added to your dashboard.`,
       });
+      // Route is now persisted — no longer dirty. If the save came from the
+      // unsaved-changes dialog, continue to the page the user wanted.
+      markCleanAndProceed();
     }
   };
 
@@ -1090,6 +1167,44 @@ function CreatorPage() {
               <button
                 onClick={handleSave}
                 disabled={!routeName.trim() || saveStatus === "saving"}
+                className="px-4 py-2 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-lg disabled:opacity-50"
+              >
+                {saveStatus === "saving" ? "Saving..." : "Save Route"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {leaveModalOpen && (
+        <div className="fixed inset-0 z-[3000] bg-black/60 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-navy-900 border border-navy-700 rounded-2xl p-6 shadow-2xl">
+            <h2 className="text-lg font-semibold text-white mb-1">Unsaved changes?</h2>
+            <p className="text-navy-400 text-sm mb-5">
+              You have unsaved changes. Do you want to save this route or discard it?
+            </p>
+            <div className="flex flex-col-reverse sm:flex-row gap-2 justify-end">
+              <button
+                onClick={() => {
+                  setLeaveModalOpen(false);
+                  blocker.reset?.();
+                }}
+                className="px-4 py-2 text-sm font-medium bg-navy-800 hover:bg-navy-700 text-navy-200 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setLeaveModalOpen(false);
+                  blocker.proceed?.();
+                }}
+                className="px-4 py-2 text-sm font-medium bg-navy-800 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-navy-700 hover:border-red-500/50 rounded-lg transition-colors"
+              >
+                Discard
+              </button>
+              <button
+                onClick={handleSaveAndLeave}
+                disabled={!canSave || saveStatus === "saving"}
                 className="px-4 py-2 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-lg disabled:opacity-50"
               >
                 {saveStatus === "saving" ? "Saving..." : "Save Route"}
