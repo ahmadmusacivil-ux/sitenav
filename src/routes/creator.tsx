@@ -157,7 +157,7 @@ function CreatorPage() {
 
   const handleSaveAndLeave = () => {
     if (!canSave || saveStatus === "saving") return;
-    pendingProceedRef.current = () => blocker.proceed();
+    pendingProceedRef.current = () => blocker.proceed?.();
     setLeaveModalOpen(false);
     if (editingId) {
       void handleSave();
