@@ -1175,6 +1175,44 @@ function CreatorPage() {
           </div>
         </div>
       )}
+
+      {leaveModalOpen && (
+        <div className="fixed inset-0 z-[3000] bg-black/60 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-navy-900 border border-navy-700 rounded-2xl p-6 shadow-2xl">
+            <h2 className="text-lg font-semibold text-white mb-1">Unsaved changes?</h2>
+            <p className="text-navy-400 text-sm mb-5">
+              You have unsaved changes. Do you want to save this route or discard it?
+            </p>
+            <div className="flex flex-col-reverse sm:flex-row gap-2 justify-end">
+              <button
+                onClick={() => {
+                  setLeaveModalOpen(false);
+                  blocker.reset?.();
+                }}
+                className="px-4 py-2 text-sm font-medium bg-navy-800 hover:bg-navy-700 text-navy-200 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setLeaveModalOpen(false);
+                  blocker.proceed?.();
+                }}
+                className="px-4 py-2 text-sm font-medium bg-navy-800 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-navy-700 hover:border-red-500/50 rounded-lg transition-colors"
+              >
+                Discard
+              </button>
+              <button
+                onClick={handleSaveAndLeave}
+                disabled={!canSave || saveStatus === "saving"}
+                className="px-4 py-2 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-lg disabled:opacity-50"
+              >
+                {saveStatus === "saving" ? "Saving..." : "Save Route"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
