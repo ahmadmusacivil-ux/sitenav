@@ -101,6 +101,73 @@ function CreatorPage() {
   const lastRecordedRef = useRef<{ lat: number; lng: number } | null>(null);
   const recordIdRef = useRef(0);
 
+  // ---- Unsaved-changes tracking ----
+  const [leaveModalOpen, setLeaveModalOpen] = useState(false);
+  const signature = useMemo(
+    () =>
+      JSON.stringify({
+        w: waypoints,
+        e: exitWaypoints,
+        p: pins,
+        rt: routeType,
+        mt: movementType,
+        ex: expiresAt,
+      }),
+    [waypoints, exitWaypoints, pins, routeType, movementType, expiresAt],
+  );
+  const signatureRef = useRef(signature);
+  signatureRef.current = signature;
+  const baselineRef = useRef<string | null>(null);
+  const isDirtyRef = useRef(false);
+  isDirtyRef.current = baselineRef.current !== null && signature !== baselineRef.current;
+  const pendingProceedRef = useRef<(() => void) | null>(null);
+
+  // Capture the baseline once any route being edited has finished loading,
+  // so freshly loaded data doesn't count as "unsaved changes".
+  useEffect(() => {
+    if (baselineRef.current === null && !loadingRoute) {
+      baselineRef.current = signatureRef.current;
+    }
+  }, [loadingRoute]);
+
+  // Warn before closing/reloading the tab with unsaved changes.
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirtyRef.current) e.preventDefault();
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, []);
+
+  const blocker = useBlocker({
+    shouldBlockFn: () => {
+      if (!isDirtyRef.current) return false;
+      setLeaveModalOpen(true);
+      return true;
+    },
+    withResolver: true,
+  });
+
+  const markCleanAndProceed = () => {
+    baselineRef.current = signatureRef.current;
+    const proceed = pendingProceedRef.current;
+    pendingProceedRef.current = null;
+    if (proceed) proceed();
+  };
+
+  const handleSaveAndLeave = () => {
+    if (!canSave || saveStatus === "saving") return;
+    pendingProceedRef.current = () => blocker.proceed();
+    setLeaveModalOpen(false);
+    if (editingId) {
+      void handleSave();
+    } else {
+      setRouteName(`Route ${new Date().toLocaleString()}`);
+      setErrorMsg(null);
+      setNamePromptOpen(true);
+    }
+  };
+
   const haversine = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
     const R = 6371000;
     const toRad = (d: number) => (d * Math.PI) / 180;
