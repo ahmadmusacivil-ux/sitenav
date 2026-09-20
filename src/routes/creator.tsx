@@ -630,6 +630,9 @@ function CreatorPage() {
       toast.success("Route saved", {
         description: `"${routeName.trim()}" added to your dashboard.`,
       });
+      // Route is now persisted — no longer dirty. If the save came from the
+      // unsaved-changes dialog, continue to the page the user wanted.
+      markCleanAndProceed();
     }
   };
 
