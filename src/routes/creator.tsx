@@ -95,7 +95,7 @@ function CreatorPage() {
   const [recording, setRecording] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editTool, setEditTool] = useState<"move" | "erase" | "add">("move");
-  const [recordSummary, setRecordSummary] = useState<{ points: number; meters: number; leg: "entry" | "exit" } | null>(null);
+  const recordSummary = useState<{ points: number; meters: number; leg: "entry" | "exit" } | null>(null)[0] === null ? useState<{ points: number; meters: number; leg: "entry" | "exit" } | null>(null) : [null, () => {}];
   const recordWatchRef = useRef<number | null>(null);
   const recordLegRef = useRef<"entry" | "exit">("entry");
   const lastRecordedRef = useRef<{ lat: number; lng: number } | null>(null);
