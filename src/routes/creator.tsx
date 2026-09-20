@@ -595,16 +595,23 @@ function CreatorPage() {
       toast.success("Route updated successfully", {
         description: `"${routeName.trim()}" saved to your dashboard.`,
       });
-      // Brief delay so the user sees the confirmation, then return to the
-      // dashboard where the updated route is visible in "My Routes".
-      setTimeout(
-        () =>
-          navigate({
-            to: "/dashboard",
-            search: { tab: "mine", updated: editingId, refresh: String(Date.now()) },
-          }),
-        900,
-      );
+      if (pendingProceedRef.current) {
+        // Save was triggered from the unsaved-changes dialog — resume the
+        // navigation the user originally attempted.
+        markCleanAndProceed();
+      } else {
+        baselineRef.current = signatureRef.current;
+        // Brief delay so the user sees the confirmation, then return to the
+        // dashboard where the updated route is visible in "My Routes".
+        setTimeout(
+          () =>
+            navigate({
+              to: "/dashboard",
+              search: { tab: "mine", updated: editingId, refresh: String(Date.now()) },
+            }),
+          900,
+        );
+      }
     } else {
       const { data, error } = await supabase
         .from("routes")
