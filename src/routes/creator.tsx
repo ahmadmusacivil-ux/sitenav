@@ -21,6 +21,8 @@ import {
   Move,
   Plus,
   Eraser,
+  Menu,
+  X,
 } from "lucide-react";
 import { ClientOnlyMap } from "@/components/ClientOnlyMap";
 import { type BackgroundRoute } from "@/components/RouteMap";
@@ -29,6 +31,7 @@ import { useAuth } from "@/lib/auth";
 import { supabase, type RouteType, type SavedRoute, type SegmentType, normalizeRouteType } from "@/lib/supabase";
 import { PIN_LABELS, PIN_COLORS, type Pin, type PinLabel } from "@/lib/pins";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/creator")({
   head: () => ({
@@ -95,6 +98,7 @@ function CreatorPage() {
   const [recording, setRecording] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editTool, setEditTool] = useState<"move" | "erase" | "add">("move");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [recordSummary, setRecordSummary] = useState<{ points: number; meters: number; leg: "entry" | "exit" } | null>(null);
   const recordWatchRef = useRef<number | null>(null);
   const recordLegRef = useRef<"entry" | "exit">("entry");
@@ -655,7 +659,7 @@ function CreatorPage() {
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       <div className="flex-shrink-0 bg-navy-950 border-b border-navy-800 px-3 py-2.5 z-50">
-        <div className="flex items-center justify-between gap-3">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:justify-between sm:gap-3">
           <div className="flex items-center gap-2 min-w-0">
             <Link
               to="/dashboard"
@@ -677,8 +681,8 @@ function CreatorPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <div className="hidden sm:flex items-center bg-navy-800/80 rounded-lg p-0.5">
+          <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center bg-navy-800/80 rounded-lg p-0.5">
               <button
                 onClick={() => setMode("waypoint")}
                 className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
@@ -698,17 +702,6 @@ function CreatorPage() {
                 <MapPin className="w-3.5 h-3.5" /> Pin
               </button>
             </div>
-            <button
-              onClick={() => setMode((m) => (m === "pin" ? "waypoint" : "pin"))}
-              className={`sm:hidden inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                mode === "pin"
-                  ? "bg-orange-500 text-white"
-                  : "bg-navy-800 hover:bg-navy-700 text-navy-300 hover:text-white"
-              }`}
-            >
-              <MapPin className="w-4 h-4" />
-              <span className="hidden xs:inline">{mode === "pin" ? "Placing…" : "Pin"}</span>
-            </button>
             <button
               onClick={handleClear}
               disabled={waypoints.length === 0 && pins.length === 0}
@@ -762,7 +755,105 @@ function CreatorPage() {
               <LogOut className="w-4 h-4" />
             </button>
           </div>
+
+          <div className="flex shrink-0 items-center gap-2 sm:hidden">
+            <Button
+              type="button"
+              onClick={openSavePrompt}
+              disabled={!canSave || saveStatus === "saving"}
+              className="h-10 min-w-[88px] bg-orange-500 px-3 font-semibold text-white hover:bg-orange-600"
+            >
+              {saveStatus === "saving" ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              ) : saveStatus === "saved" ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              {saveStatus === "saving" ? "Saving" : saveStatus === "saved" ? "Saved" : "Save"}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              onClick={() => setMobileMenuOpen((open) => !open)}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-route-controls"
+              aria-label={mobileMenuOpen ? "Close route controls" : "Open route controls"}
+              className="h-10 w-10 bg-navy-800 text-navy-200 hover:bg-navy-700 hover:text-white"
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+          </div>
         </div>
+        {mobileMenuOpen && (
+          <div
+            id="mobile-route-controls"
+            className="mt-2 grid grid-cols-2 gap-2 rounded-lg border border-navy-700 bg-navy-900 p-2 shadow-lg sm:hidden"
+          >
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setMode("waypoint");
+                setMobileMenuOpen(false);
+              }}
+              className={`h-11 justify-start px-3 ${mode === "waypoint" ? "bg-orange-500 text-white hover:bg-orange-600" : "bg-navy-800 text-navy-200 hover:bg-navy-700 hover:text-white"}`}
+            >
+              <RouteIcon className="h-4 w-4" /> Route
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setMode("pin");
+                setMobileMenuOpen(false);
+              }}
+              className={`h-11 justify-start px-3 ${mode === "pin" ? "bg-orange-500 text-white hover:bg-orange-600" : "bg-navy-800 text-navy-200 hover:bg-navy-700 hover:text-white"}`}
+            >
+              <MapPin className="h-4 w-4" /> Pin
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                handleClear();
+                setMobileMenuOpen(false);
+              }}
+              disabled={waypoints.length === 0 && pins.length === 0}
+              className="h-11 justify-start bg-navy-800 px-3 text-navy-200 hover:bg-navy-700 hover:text-white"
+            >
+              <Trash2 className="h-4 w-4" /> Clear
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                undoLastWaypoint();
+                setMobileMenuOpen(false);
+              }}
+              disabled={
+                creatorMode !== "draw" ||
+                ((routeType === "one_way" && drawingLeg === "exit" ? exitWaypoints.length : waypoints.length) === 0)
+              }
+              className="h-11 justify-start bg-navy-800 px-3 text-navy-200 hover:bg-navy-700 hover:text-white"
+            >
+              <Undo2 className="h-4 w-4" /> Undo
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={async () => {
+                setMobileMenuOpen(false);
+                await signOut();
+                navigate({ to: "/auth" });
+              }}
+              className="col-span-2 h-11 justify-start bg-navy-800 px-3 text-navy-200 hover:bg-navy-700 hover:text-white"
+            >
+              <LogOut className="h-4 w-4" /> Log out
+            </Button>
+          </div>
+        )}
         <div className="mt-2 flex justify-center">
           <LocationSearch
             userLocation={gpsPos}
