@@ -38,6 +38,10 @@ export const Route = createFileRoute("/creator")({
     meta: [
       { title: "Create a Route — LOST" },
       { name: "description", content: "Draw a custom route on the satellite map and share it as a link." },
+      { property: "og:title", content: "Create a Route — LOST" },
+      { property: "og:description", content: "Draw a custom route on the satellite map and share it as a link." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   validateSearch: (search: Record<string, unknown>): { edit?: string } => ({
