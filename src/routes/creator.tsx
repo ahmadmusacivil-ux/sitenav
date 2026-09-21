@@ -790,33 +790,31 @@ function CreatorPage() {
             </Button>
           </div>
         </div>
+
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:hidden">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setMode("waypoint")}
+            className={`h-10 px-3 ${mode === "waypoint" ? "bg-orange-500 text-white hover:bg-orange-600" : "bg-navy-800 text-navy-200 hover:bg-navy-700 hover:text-white"}`}
+          >
+            <RouteIcon className="h-4 w-4" /> Route
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setMode("pin")}
+            className={`h-10 px-3 ${mode === "pin" ? "bg-orange-500 text-white hover:bg-orange-600" : "bg-navy-800 text-navy-200 hover:bg-navy-700 hover:text-white"}`}
+          >
+            <MapPin className="h-4 w-4" /> Pin
+          </Button>
+        </div>
+
         {mobileMenuOpen && (
           <div
             id="mobile-route-controls"
-            className="mt-2 grid grid-cols-2 gap-2 rounded-lg border border-navy-700 bg-navy-900 p-2 shadow-lg sm:hidden"
+            className="relative z-10 mt-2 grid grid-cols-2 gap-2 rounded-lg border border-navy-700 bg-navy-900 p-2 shadow-lg sm:hidden"
           >
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => {
-                setMode("waypoint");
-                setMobileMenuOpen(false);
-              }}
-              className={`h-11 justify-start px-3 ${mode === "waypoint" ? "bg-orange-500 text-white hover:bg-orange-600" : "bg-navy-800 text-navy-200 hover:bg-navy-700 hover:text-white"}`}
-            >
-              <RouteIcon className="h-4 w-4" /> Route
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => {
-                setMode("pin");
-                setMobileMenuOpen(false);
-              }}
-              className={`h-11 justify-start px-3 ${mode === "pin" ? "bg-orange-500 text-white hover:bg-orange-600" : "bg-navy-800 text-navy-200 hover:bg-navy-700 hover:text-white"}`}
-            >
-              <MapPin className="h-4 w-4" /> Pin
-            </Button>
             <Button
               type="button"
               variant="secondary"
@@ -865,7 +863,7 @@ function CreatorPage() {
           />
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
+          <div className="grid w-full grid-cols-3 items-center rounded-lg bg-navy-800/80 p-0.5 sm:inline-flex sm:w-auto">
             <button
               onClick={() => {
                 if (recording) return;
@@ -873,7 +871,7 @@ function CreatorPage() {
                 setEditMode(false);
               }}
               disabled={recording}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+              className={`inline-flex h-9 items-center justify-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors sm:h-auto ${
                 creatorMode === "draw" && !editMode ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
               }`}
               title="Draw mode — tap map to add waypoints"
@@ -888,7 +886,7 @@ function CreatorPage() {
                 setEditMode(false);
               }}
               disabled={recording}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+              className={`inline-flex h-9 items-center justify-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors sm:h-auto ${
                 creatorMode === "record" && !editMode ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
               }`}
               title="Record mode — drive to capture the route"
@@ -901,7 +899,7 @@ function CreatorPage() {
                 setEditMode((v) => !v);
               }}
               disabled={recording}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+              className={`inline-flex h-9 items-center justify-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors sm:h-auto ${
                 editMode ? "bg-orange-500 text-white" : "text-navy-300 hover:text-white"
               }`}
               title="Edit route — drag, click to delete, click line to insert"
@@ -910,8 +908,8 @@ function CreatorPage() {
             </button>
           </div>
           {editMode && (
-            <>
-              <div className="inline-flex items-center bg-navy-950/95 backdrop-blur-sm border border-navy-700 rounded-full p-0.5 shadow-lg">
+            <div className="flex w-full min-w-0 flex-col gap-1.5 sm:w-auto sm:flex-row sm:items-center">
+              <div className="grid w-full grid-cols-3 items-center rounded-lg border border-navy-700 bg-navy-950/95 p-0.5 shadow-lg backdrop-blur-sm sm:inline-flex sm:w-auto sm:rounded-full">
                 {([
                   { v: "erase" as const, label: "Erase", Icon: Eraser },
                   { v: "add" as const, label: "Add", Icon: Plus },
@@ -920,7 +918,7 @@ function CreatorPage() {
                   <button
                     key={v}
                     onClick={() => setEditTool(v)}
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full transition-colors ${
+                    className={`inline-flex h-9 items-center justify-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition-colors sm:h-auto sm:rounded-full ${
                       editTool === v ? "bg-orange-500 text-white" : "text-navy-300 hover:text-white"
                     }`}
                   >
@@ -935,7 +933,7 @@ function CreatorPage() {
                     ? "Click the route line to add"
                     : "Drag a waypoint to move"}
               </span>
-            </>
+            </div>
           )}
           {!editingId && (
             <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
