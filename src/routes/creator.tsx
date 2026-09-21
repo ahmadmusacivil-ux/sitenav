@@ -858,6 +858,7 @@ function CreatorPage() {
         )}
         <div className="mt-2 flex justify-center">
           <LocationSearch
+            inline
             userLocation={gpsPos}
             onSelect={(lat, lng) => setFlyTarget({ lat, lng, zoom: 17, seq: Date.now() })}
           />
