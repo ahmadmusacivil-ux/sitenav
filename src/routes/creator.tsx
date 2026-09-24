@@ -686,17 +686,17 @@ function CreatorPage() {
             {saveStatus === "saving" ? (
               <>
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                <span className="hidden xs:inline">Saving...</span>
+                <span>Saving...</span>
               </>
             ) : saveStatus === "saved" ? (
               <>
                 <Check className="h-4 w-4" />
-                <span className="hidden xs:inline">Saved!</span>
+                <span>Saved!</span>
               </>
             ) : (
               <>
                 <Save className="h-4 w-4" />
-                <span className="hidden xs:inline">Save</span>
+                <span>Save</span>
               </>
             )}
           </button>
