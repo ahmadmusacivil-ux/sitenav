@@ -788,52 +788,6 @@ function CreatorPage() {
           </button>
         </div>
 
-        {mobileMenuOpen && (
-          <div
-            id="mobile-route-controls"
-            className="relative z-10 mt-2 grid grid-cols-2 gap-2 rounded-lg border border-navy-700 bg-navy-900 p-2 shadow-lg sm:hidden"
-          >
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => {
-                handleClear();
-                setMobileMenuOpen(false);
-              }}
-              disabled={waypoints.length === 0 && pins.length === 0}
-              className="h-11 justify-start bg-navy-800 px-3 text-navy-200 hover:bg-navy-700 hover:text-white"
-            >
-              <Trash2 className="h-4 w-4" /> Clear
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => {
-                undoLastWaypoint();
-                setMobileMenuOpen(false);
-              }}
-              disabled={
-                creatorMode !== "draw" ||
-                ((routeType === "one_way" && drawingLeg === "exit" ? exitWaypoints.length : waypoints.length) === 0)
-              }
-              className="h-11 justify-start bg-navy-800 px-3 text-navy-200 hover:bg-navy-700 hover:text-white"
-            >
-              <Undo2 className="h-4 w-4" /> Undo
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={async () => {
-                setMobileMenuOpen(false);
-                await signOut();
-                navigate({ to: "/auth" });
-              }}
-              className="col-span-2 h-11 justify-start bg-navy-800 px-3 text-navy-200 hover:bg-navy-700 hover:text-white"
-            >
-              <LogOut className="h-4 w-4" /> Log out
-            </Button>
-          </div>
-        )}
         <div className="mt-2 flex justify-center">
           <LocationSearch
             inline
