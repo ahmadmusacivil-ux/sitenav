@@ -5,10 +5,8 @@ import {
   Trash2,
   Save,
   Check,
-  LogOut,
   Copy,
   MapPin,
-  Route as RouteIcon,
   Pencil,
   Car,
   Play,
@@ -21,8 +19,6 @@ import {
   Move,
   Plus,
   Eraser,
-  Menu,
-  X,
 } from "lucide-react";
 import { ClientOnlyMap } from "@/components/ClientOnlyMap";
 import { type BackgroundRoute } from "@/components/RouteMap";
@@ -67,7 +63,7 @@ function defaultExpiryISO(): string {
 }
 
 function CreatorPage() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { edit: editId } = Route.useSearch();
   const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
@@ -102,7 +98,6 @@ function CreatorPage() {
   const [recording, setRecording] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editTool, setEditTool] = useState<"move" | "erase" | "add">("move");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [recordSummary, setRecordSummary] = useState<{ points: number; meters: number; leg: "entry" | "exit" } | null>(null);
   const recordWatchRef = useRef<number | null>(null);
   const recordLegRef = useRef<"entry" | "exit">("entry");
@@ -663,199 +658,136 @@ function CreatorPage() {
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       <div className="flex-shrink-0 bg-navy-950 border-b border-navy-800 px-3 py-2.5 z-50">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:justify-between sm:gap-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <Link
-              to="/dashboard"
-              className="p-1.5 text-navy-400 hover:text-white hover:bg-navy-800 rounded-lg transition-colors flex-shrink-0"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            <div className="min-w-0">
-              <h1 className="text-white font-semibold leading-tight truncate">
-                {editingId ? "Edit Route" : "Create Route"}
-              </h1>
-              <p className="text-navy-400 text-xs leading-tight">
-                {mode === "pin"
-                  ? "Click map to place a pin"
-                  : routeType === "one_way"
-                    ? `${waypoints.length} in / ${exitWaypoints.length} out${pins.length ? ` • ${pins.length} pin${pins.length !== 1 ? "s" : ""}` : ""}`
-                    : `${waypoints.length} point${waypoints.length !== 1 ? "s" : ""}${pins.length ? ` • ${pins.length} pin${pins.length !== 1 ? "s" : ""}` : ""}`}
-              </p>
-            </div>
+        {/* Top row — back, title, Save */}
+        <div className="flex items-center gap-2">
+          <Link
+            to="/dashboard"
+            className="flex-shrink-0 rounded-lg p-1.5 text-navy-400 transition-colors hover:bg-navy-800 hover:text-white"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-white font-semibold leading-tight">
+              {editingId ? "Edit Route" : "Create Route"}
+            </h1>
+            <p className="truncate text-navy-400 text-xs leading-tight">
+              {mode === "pin"
+                ? "Click map to place a pin"
+                : routeType === "one_way"
+                  ? `${waypoints.length} in / ${exitWaypoints.length} out${pins.length ? ` • ${pins.length} pin${pins.length !== 1 ? "s" : ""}` : ""}`
+                  : `${waypoints.length} point${waypoints.length !== 1 ? "s" : ""}${pins.length ? ` • ${pins.length} pin${pins.length !== 1 ? "s" : ""}` : ""}`}
+            </p>
           </div>
-
-          <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
-            <div className="flex items-center bg-navy-800/80 rounded-lg p-0.5">
-              <button
-                onClick={() => setMode("waypoint")}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                  mode === "waypoint" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
-                }`}
-                title="Draw route mode"
-              >
-                <RouteIcon className="w-3.5 h-3.5" /> Route
-              </button>
-              <button
-                onClick={() => setMode("pin")}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                  mode === "pin" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
-                }`}
-                title="Add pin mode"
-              >
-                <MapPin className="w-3.5 h-3.5" /> Pin
-              </button>
-            </div>
-            <button
-              onClick={handleClear}
-              disabled={waypoints.length === 0 && pins.length === 0}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-navy-800 hover:bg-navy-700 text-navy-300 hover:text-white rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span className="hidden xs:inline">Clear</span>
-            </button>
-            <button
-              onClick={undoLastWaypoint}
-              disabled={
-                creatorMode !== "draw" ||
-                ((routeType === "one_way" && drawingLeg === "exit" ? exitWaypoints.length : waypoints.length) === 0)
-              }
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-navy-800 hover:bg-navy-700 text-navy-300 hover:text-white rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-              title="Undo last waypoint"
-            >
-              <Undo2 className="w-4 h-4" />
-              <span className="hidden xs:inline">Undo</span>
-            </button>
-            <button
-              onClick={openSavePrompt}
-              disabled={!canSave || saveStatus === "saving"}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.97]"
-            >
-              {saveStatus === "saving" ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span className="hidden xs:inline">Saving...</span>
-                </>
-              ) : saveStatus === "saved" ? (
-                <>
-                  <Check className="w-4 h-4" />
-                  <span className="hidden xs:inline">Saved!</span>
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  <span className="hidden xs:inline">Save</span>
-                </>
-              )}
-            </button>
-            <button
-              onClick={async () => {
-                await signOut();
-                navigate({ to: "/auth" });
-              }}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium bg-navy-800 hover:bg-navy-700 text-navy-300 hover:text-white rounded-lg transition-colors"
-              title="Logout"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="flex shrink-0 items-center gap-2 sm:hidden">
-            <Button
-              type="button"
-              onClick={openSavePrompt}
-              disabled={!canSave || saveStatus === "saving"}
-              className="h-10 min-w-[88px] bg-orange-500 px-3 font-semibold text-white hover:bg-orange-600"
-            >
-              {saveStatus === "saving" ? (
+          <button
+            onClick={openSavePrompt}
+            disabled={!canSave || saveStatus === "saving"}
+            className="inline-flex h-11 flex-shrink-0 items-center gap-1.5 rounded-lg bg-orange-500 px-4 text-sm font-semibold text-white transition-all hover:bg-orange-600 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            {saveStatus === "saving" ? (
+              <>
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              ) : saveStatus === "saved" ? (
+                <span>Saving...</span>
+              </>
+            ) : saveStatus === "saved" ? (
+              <>
                 <Check className="h-4 w-4" />
-              ) : (
+                <span>Saved!</span>
+              </>
+            ) : (
+              <>
                 <Save className="h-4 w-4" />
-              )}
-              {saveStatus === "saving" ? "Saving" : saveStatus === "saved" ? "Saved" : "Save"}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="icon"
-              onClick={() => setMobileMenuOpen((open) => !open)}
-              aria-expanded={mobileMenuOpen}
-              aria-controls="mobile-route-controls"
-              aria-label={mobileMenuOpen ? "Close route controls" : "Open route controls"}
-              className="h-10 w-10 bg-navy-800 text-navy-200 hover:bg-navy-700 hover:text-white"
-            >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </Button>
-          </div>
+                <span>Save</span>
+              </>
+            )}
+          </button>
         </div>
 
-        <div className="mt-2 grid grid-cols-2 gap-2 sm:hidden">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setMode("waypoint")}
-            className={`h-10 px-3 ${mode === "waypoint" ? "bg-orange-500 text-white hover:bg-orange-600" : "bg-navy-800 text-navy-200 hover:bg-navy-700 hover:text-white"}`}
+        {/* Tools row — Draw, Record, Edit, Undo, Clear, Pin (all visible, no menu) */}
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <button
+            onClick={() => {
+              if (recording) return;
+              setCreatorMode((m) => (m === "draw" ? null : "draw"));
+              setEditMode(false);
+            }}
+            disabled={recording}
+            className={`inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors sm:w-auto sm:px-2.5 ${
+              creatorMode === "draw" && !editMode ? "bg-navy-700 text-white" : "text-navy-300 hover:bg-navy-800 hover:text-white"
+            }`}
+            title="Draw mode — tap map to add waypoints"
+            aria-label="Draw mode"
           >
-            <RouteIcon className="h-4 w-4" /> Route
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setMode("pin")}
-            className={`h-10 px-3 ${mode === "pin" ? "bg-orange-500 text-white hover:bg-orange-600" : "bg-navy-800 text-navy-200 hover:bg-navy-700 hover:text-white"}`}
+            <Pencil className="h-4 w-4" />
+            <span className="hidden text-xs font-medium sm:ml-1 sm:inline">Draw</span>
+          </button>
+          <button
+            onClick={() => {
+              if (recording) return;
+              setCreatorMode((m) => (m === "record" ? null : "record"));
+              setMode("waypoint");
+              setEditMode(false);
+            }}
+            disabled={recording}
+            className={`inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors sm:w-auto sm:px-2.5 ${
+              creatorMode === "record" && !editMode ? "bg-navy-700 text-white" : "text-navy-300 hover:bg-navy-800 hover:text-white"
+            }`}
+            title="Record mode — drive to capture the route"
+            aria-label="Record mode"
           >
-            <MapPin className="h-4 w-4" /> Pin
-          </Button>
+            <Car className="h-4 w-4" />
+            <span className="hidden text-xs font-medium sm:ml-1 sm:inline">Record</span>
+          </button>
+          <button
+            onClick={() => {
+              if (recording) return;
+              setEditMode((v) => !v);
+            }}
+            disabled={recording}
+            className={`inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors sm:w-auto sm:px-2.5 ${
+              editMode ? "bg-orange-500 text-white" : "text-navy-300 hover:bg-navy-800 hover:text-white"
+            }`}
+            title="Edit route — drag, click to delete, click line to insert"
+            aria-label="Edit route"
+          >
+            <Wrench className="h-4 w-4" />
+            <span className="hidden text-xs font-medium sm:ml-1 sm:inline">Edit</span>
+          </button>
+          <button
+            onClick={undoLastWaypoint}
+            disabled={
+              creatorMode !== "draw" ||
+              ((routeType === "one_way" && drawingLeg === "exit" ? exitWaypoints.length : waypoints.length) === 0)
+            }
+            className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-navy-400 transition-colors hover:bg-navy-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-30 sm:w-auto sm:px-2.5"
+            title="Undo last waypoint"
+            aria-label="Undo last waypoint"
+          >
+            <Undo2 className="h-4 w-4" />
+            <span className="hidden text-xs font-medium sm:ml-1 sm:inline">Undo</span>
+          </button>
+          <button
+            onClick={handleClear}
+            disabled={waypoints.length === 0 && pins.length === 0}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-navy-400 transition-colors hover:bg-navy-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-30 sm:w-auto sm:px-2.5"
+            title="Clear route and pins"
+            aria-label="Clear route and pins"
+          >
+            <Trash2 className="h-4 w-4" />
+            <span className="hidden text-xs font-medium sm:ml-1 sm:inline">Clear</span>
+          </button>
+          <button
+            onClick={() => setMode((m) => (m === "pin" ? "waypoint" : "pin"))}
+            className={`inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors sm:w-auto sm:px-2.5 ${
+              mode === "pin" ? "bg-orange-500 text-white" : "text-navy-300 hover:bg-navy-800 hover:text-white"
+            }`}
+            title="Pin mode — tap map to place a pin"
+            aria-label="Pin mode"
+          >
+            <MapPin className="h-4 w-4" />
+            <span className="hidden text-xs font-medium sm:ml-1 sm:inline">Pin</span>
+          </button>
         </div>
 
-        {mobileMenuOpen && (
-          <div
-            id="mobile-route-controls"
-            className="relative z-10 mt-2 grid grid-cols-2 gap-2 rounded-lg border border-navy-700 bg-navy-900 p-2 shadow-lg sm:hidden"
-          >
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => {
-                handleClear();
-                setMobileMenuOpen(false);
-              }}
-              disabled={waypoints.length === 0 && pins.length === 0}
-              className="h-11 justify-start bg-navy-800 px-3 text-navy-200 hover:bg-navy-700 hover:text-white"
-            >
-              <Trash2 className="h-4 w-4" /> Clear
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => {
-                undoLastWaypoint();
-                setMobileMenuOpen(false);
-              }}
-              disabled={
-                creatorMode !== "draw" ||
-                ((routeType === "one_way" && drawingLeg === "exit" ? exitWaypoints.length : waypoints.length) === 0)
-              }
-              className="h-11 justify-start bg-navy-800 px-3 text-navy-200 hover:bg-navy-700 hover:text-white"
-            >
-              <Undo2 className="h-4 w-4" /> Undo
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={async () => {
-                setMobileMenuOpen(false);
-                await signOut();
-                navigate({ to: "/auth" });
-              }}
-              className="col-span-2 h-11 justify-start bg-navy-800 px-3 text-navy-200 hover:bg-navy-700 hover:text-white"
-            >
-              <LogOut className="h-4 w-4" /> Log out
-            </Button>
-          </div>
-        )}
         <div className="mt-2 flex justify-center">
           <LocationSearch
             inline
@@ -864,50 +796,6 @@ function CreatorPage() {
           />
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <div className="grid w-full grid-cols-3 items-center rounded-lg bg-navy-800/80 p-0.5 sm:inline-flex sm:w-auto">
-            <button
-              onClick={() => {
-                if (recording) return;
-                setCreatorMode((m) => (m === "draw" ? null : "draw"));
-                setEditMode(false);
-              }}
-              disabled={recording}
-              className={`inline-flex h-9 items-center justify-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors sm:h-auto ${
-                creatorMode === "draw" && !editMode ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
-              }`}
-              title="Draw mode — tap map to add waypoints"
-            >
-              <Pencil className="w-3.5 h-3.5" /> Draw
-            </button>
-            <button
-              onClick={() => {
-                if (recording) return;
-                setCreatorMode((m) => (m === "record" ? null : "record"));
-                setMode("waypoint");
-                setEditMode(false);
-              }}
-              disabled={recording}
-              className={`inline-flex h-9 items-center justify-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors sm:h-auto ${
-                creatorMode === "record" && !editMode ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
-              }`}
-              title="Record mode — drive to capture the route"
-            >
-              <Car className="w-3.5 h-3.5" /> Record
-            </button>
-            <button
-              onClick={() => {
-                if (recording) return;
-                setEditMode((v) => !v);
-              }}
-              disabled={recording}
-              className={`inline-flex h-9 items-center justify-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors sm:h-auto ${
-                editMode ? "bg-orange-500 text-white" : "text-navy-300 hover:text-white"
-              }`}
-              title="Edit route — drag, click to delete, click line to insert"
-            >
-              <Wrench className="w-3.5 h-3.5" /> Edit
-            </button>
-          </div>
           {editMode && (
             <div className="flex w-full min-w-0 flex-col gap-1.5 sm:w-auto sm:flex-row sm:items-center">
               <div className="grid w-full grid-cols-3 items-center rounded-lg border border-navy-700 bg-navy-950/95 p-0.5 shadow-lg backdrop-blur-sm sm:inline-flex sm:w-auto sm:rounded-full">
@@ -944,7 +832,7 @@ function CreatorPage() {
                   setRouteType("two_way");
                 }}
                 disabled={waypoints.length > 0 || exitWaypoints.length > 0}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors disabled:opacity-60 ${
+                className={`inline-flex h-11 items-center rounded-md px-3 text-xs font-medium transition-colors disabled:opacity-60 sm:h-auto sm:px-2.5 ${
                   routeType === "two_way" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
                 }`}
                 title="Same path used for In and Out"
@@ -957,7 +845,7 @@ function CreatorPage() {
                   setRouteType("one_way");
                 }}
                 disabled={waypoints.length > 0 || exitWaypoints.length > 0}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors disabled:opacity-60 ${
+                className={`inline-flex h-11 items-center rounded-md px-3 text-xs font-medium transition-colors disabled:opacity-60 sm:h-auto sm:px-2.5 ${
                   routeType === "one_way" ? "bg-navy-700 text-white" : "text-navy-300 hover:text-white"
                 }`}
                 title="Separate In and Out paths"
@@ -971,7 +859,7 @@ function CreatorPage() {
             <div className="inline-flex items-center bg-navy-800/80 rounded-lg p-0.5">
               <button
                 onClick={() => setDrawingLeg("entry")}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
+                className={`inline-flex h-11 items-center gap-1 rounded-md px-3 text-xs font-semibold transition-colors sm:h-auto sm:px-2.5 ${
                   drawingLeg === "entry" ? "bg-orange-500 text-white" : "text-navy-300 hover:text-white"
                 }`}
               >
@@ -980,7 +868,7 @@ function CreatorPage() {
               </button>
               <button
                 onClick={() => setDrawingLeg("exit")}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
+                className={`inline-flex h-11 items-center gap-1 rounded-md px-3 text-xs font-semibold transition-colors sm:h-auto sm:px-2.5 ${
                   drawingLeg === "exit" ? "bg-blue-500 text-white" : "text-navy-300 hover:text-white"
                 }`}
               >
@@ -999,9 +887,9 @@ function CreatorPage() {
                 <button
                   key={v}
                   onClick={() => setMovementType(v)}
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
-                    movementType === v ? `${color} text-white` : "text-navy-300 hover:text-white"
-                  }`}
+                    className={`inline-flex h-11 items-center gap-1 rounded-md px-3 text-xs font-semibold transition-colors sm:h-auto sm:px-2.5 ${
+                      movementType === v ? `${color} text-white` : "text-navy-300 hover:text-white"
+                    }`}
                   title={`New waypoints will be tagged as ${label}`}
                 >
                   <Icon className="w-3.5 h-3.5" /> {label}
@@ -1017,7 +905,7 @@ function CreatorPage() {
                 value={expiresAt}
                 min={new Date().toISOString().slice(0, 10)}
                 onChange={(e) => setExpiresAt(e.target.value)}
-                className="bg-navy-950 border border-navy-700 rounded px-1.5 py-0.5 text-xs text-white focus:outline-none focus:border-orange-500"
+                className="h-11 rounded border border-navy-700 bg-navy-950 px-2 text-xs text-white focus:border-orange-500 focus:outline-none sm:h-auto"
                 title="Recommended for sites where conditions change."
               />
               {expiresAt && (
