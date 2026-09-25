@@ -138,6 +138,7 @@ function RotateControls() {
     getBearing?: () => number;
   };
   const [bearingDeg, setBearingDeg] = useState(0);
+  const controlRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!map.getBearing) return;
@@ -149,6 +150,15 @@ function RotateControls() {
     };
   }, [map]);
 
+  // Stop Leaflet from treating taps on these buttons as map clicks (which
+  // would add waypoints in draw mode).
+  useEffect(() => {
+    const el = controlRef.current;
+    if (!el) return;
+    L.DomEvent.disableClickPropagation(el);
+    L.DomEvent.disableScrollPropagation(el);
+  }, []);
+
   const rotateBy = (delta: number) => {
     if (!map.setBearing) return;
     map.setBearing(((map.getBearing?.() ?? 0) + delta) % 360);
@@ -158,6 +168,7 @@ function RotateControls() {
 
   return (
     <div
+      ref={controlRef}
       className="leaflet-right map-rotate-wrapper"
       style={{ pointerEvents: "none" }}
       onClick={(e) => e.stopPropagation()}
